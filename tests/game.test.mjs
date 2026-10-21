@@ -2,12 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
-import worker, { validateReference } from '../src/worker.mjs';
+import worker from '../src/worker.mjs';
 import { DEMO } from '../src/demo.mjs';
 import { SITE } from '../src/config.mjs';
-import { documents, aiLinks } from '../src/docs.mjs';
 import { etDate, resetAt, normalize, matchAnswer, TIERS } from '../public/rules.mjs';
-import { homePage } from '../src/html.mjs';
+import { homePage, infoPage } from '../src/html.mjs';
 
 function database(){
   const db=new DatabaseSync(':memory:');
@@ -40,12 +39,6 @@ test('answer matching normalizes accents, uses known aliases and avoids short fu
   assert.equal(matchAnswer('Yttrum',DEMO.prompts[3].answers).correction,true);
   assert.equal(matchAnswer('xyz',DEMO.prompts[3].answers),null);
   assert.equal(matchAnswer('zzzzzzzzzz',DEMO.prompts[0].answers),null);
-});
-test('reference import validates date, question identity and tier whitelist',()=>{
-  const date='2026-10-17';const today={date,dayNumber:94,prompts:DEMO.prompts.map(({id,text})=>({id,text}))},reveal={date,prompts:structuredClone(DEMO.prompts)};
-  assert.equal(validateReference(today,reveal,date).prompts.length,7);
-  assert.throws(()=>validateReference(today,{...reveal,date:'2026-10-18'},date));
-  reveal.prompts[0].text='Different question';assert.throws(()=>validateReference(today,reveal,date));
 });
 test('seven rounds are scored on server; retries cannot duplicate points; other browsers cannot read the run',async()=>{
   const s=service();let{body:game}=await s.call('/api/start',{});const id=game.runId;
@@ -80,20 +73,19 @@ test('expired server windows cannot score late answers or be revived by pausing'
   const late=await s.call('/api/answer',{runId:g.runId,round:0,answer:'Pommes soufflées',confirm:true,timeout:true});
   assert.equal(late.body.result.score,0);assert.equal(late.body.state.round,1);s.env.DB.close();
 });
-test('four docs share product facts, full composes all three, config mutations propagate without private keys',()=>{
-  const a=documents();assert.equal(Object.keys(a).length,4);
-  for(const key of ['/llms.txt','/pricing.md','/models.md'])assert.ok(a['/llms-full.txt'].includes(a[key]));
-  const changed=structuredClone(SITE);changed.price.amount=7;changed.price.label='Test pricing';changed.features.push('Isolated capability test');changed.secret='DO_NOT_LEAK';
-  const b=documents(changed);assert.ok(b['/pricing.md'].includes('7 USD'));assert.ok(b['/models.md'].includes('Isolated capability test'));assert.ok(b['/llms-full.txt'].includes('Test pricing'));assert.ok(!JSON.stringify(b).includes('DO_NOT_LEAK'));
+test('openkrillion-only routes are gone',async()=>{
+  const s=service();
+  for(const path of ['/llms.txt','/llms-full.txt','/pricing.md','/models.md','/BingSiteAuth.xml','/media/assets/og.png']){const r=await worker.fetch(new Request('http://localhost:3051'+path),s.env,{});assert.equal(r.status,404,path);}
+  const admin=await s.call('/api/admin/sync',{});assert.equal(admin.status,404);
+  s.env.DB.close();
 });
-test('five AI destinations share one localized prompt, canonical docs and native link safety',()=>{
-  for(const lang of SITE.languages){const links=aiLinks(lang);assert.equal(links.length,5);const q=links.map(a=>new URL(a.href).searchParams.get('q'));assert.equal(new Set(q).size,1);assert.ok(q[0].includes(SITE.origin+'/llms-full.txt'));assert.ok(q[0].includes(lang==='zh'?'用中文回答':'answer in English'));assert.equal(new URL(links.find(a=>a.name==='Google AI Mode').href).searchParams.get('udm'),'50');const html=homePage(lang);assert.ok(html.includes('noopener noreferrer nofollow'));assert.ok(html.includes('original-footer'));assert.ok(html.includes('AI &amp; Agent Docs'));}
+test('home page has no analytics, AI links, guide or krillion branding',()=>{
+  const html=homePage();
+  assert.doesNotMatch(html,/plausible|gtag|clarity|chatgpt|perplexity|grok|id="guide"|lang=zh/i);
+  assert.doesNotMatch(html,/krillion/i);
+  const about=infoPage('/about');assert.match(about,/OpenKrillion/);assert.ok(about.includes('https://github.com/VulcanEon/openkrillion.com-service'));
 });
-test('SSR SEO exposes an expandable guide, correct canonical and no crawler-specific cloaking',()=>{
-  const html=homePage();assert.ok(html.includes('<h1 aria-label="Krillion Game'));assert.ok(html.includes('<details id="guide"'));assert.ok(html.includes('https://openkrillion.com/assets/og.png'));
-  const text=html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'').replace(/<[^>]+>/g,' '),words=text.match(/[A-Za-z]+(?:[’'-][A-Za-z]+)*/g),density=words.filter(w=>w.toLowerCase()==='krillion').length/words.length;
-  assert.ok(words.length>1500);assert.ok(density>.03);assert.ok(!html.includes('googlebot'));
-});
-test('public docs GET and HEAD are readable UTF-8 and not SPA HTML',async()=>{
-  const s=service();for(const path of Object.keys(documents()))for(const method of ['GET','HEAD']){const r=await worker.fetch(new Request('http://localhost:3051'+path,{method}),s.env,{});assert.equal(r.status,200);assert.match(r.headers.get('Content-Type'),/text\/plain; charset=utf-8/);const body=await r.text();if(method==='HEAD')assert.equal(body,'');else{assert.ok(body.startsWith('# OpenKrillion'));assert.ok(!body.includes('<!doctype html>'));}}s.env.DB.close();
+test('player cookie is ct_player',async()=>{
+  const s=service();const r=await worker.fetch(new Request('http://localhost:3051/api/start',{method:'POST',body:'{}',headers:{'Content-Type':'application/json'}}),s.env,{});
+  assert.match(r.headers.get('Set-Cookie'),/^ct_player=/);s.env.DB.close();
 });
