@@ -18,10 +18,10 @@ try{
   await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='answering');
   await page.waitForTimeout(450);await page.screenshot({path:output+'/desktop-answer.png'});
   await page.locator('#answer').fill('zzzzzzzzzz');await page.locator('#answer').press('Enter');await page.waitForFunction(()=>document.getElementById('answer-status').textContent.includes('zzzzzzzzzz'));
-  await page.locator('#answer').fill('mashed');await page.locator('#answer').press('Enter');await page.waitForFunction(()=>document.getElementById('answer-status').textContent.includes('corrects to'));assert.equal(await page.locator('#answer').inputValue(),'Mashed potatoes');
+  await page.locator('#answer').fill('Dogecoim');await page.locator('#answer').press('Enter');await page.waitForFunction(()=>document.getElementById('answer-status').textContent.includes('corrects to'));assert.equal(await page.locator('#answer').inputValue(),'Dogecoin');
   await page.locator('#answer').press('Enter');await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='landed',{timeout:15000});
   await page.waitForTimeout(1000);await page.screenshot({path:output+'/desktop-landing.png'});
-  const answers=['Mara','Bob Pettit','Yttrium','Ghost station','France','Great Lakes Avengers'];
+  const answers=['Youbit','Nervos Network','Paul Le Roux','NuBits','Etheria','Allinvain'];
   for(let i=0;i<answers.length;i++){
     await page.locator('#next-btn').click();await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='preview');
     if(local)await page.evaluate(()=>window.advanceTime(3100));else await page.waitForTimeout(3200);

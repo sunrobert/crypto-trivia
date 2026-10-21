@@ -36,10 +36,10 @@ export function distance(a, b, limit = Infinity) {
 export function matchAnswer(input, answers) {
   const key = normalize(input);
   if (!key || key.length > 256) return null;
-  const commonAliases = { mashedpotatoes: ['mashed', 'mash'], frenchfries: ['fries'], bakedpotato: ['baked potato', 'jacket potato'] };
-  const entries = answers.flatMap(a => [a.answer, ...(a.aliases || []), ...(commonAliases[normalize(a.answer)] || [])].map(word => ({ word, a, key: normalize(word) })));
+  const entries = answers.flatMap(a => [a.answer, ...(a.aliases || [])].map(word => ({ a, key: normalize(word) })));
+  // An exact hit on the answer or any alias (tickers like "$DOGE") is accepted without a confirmation step.
   const exact = entries.find(e => e.key === key);
-  if (exact) return { ...exact.a, correction: key !== normalize(exact.a.answer) };
+  if (exact) return { ...exact.a, correction: false };
   const allowance = key.length < 4 ? 0 : key.length < 8 ? 1 : 2;
   const candidates = entries.map(e => ({ ...e, d: distance(key, e.key, allowance) })).filter(e => e.d <= allowance).sort((a, b) => a.d - b.d);
   if (candidates.length && (!candidates[1] || candidates[0].d < candidates[1].d || candidates[0].a.answer === candidates[1].a.answer)) return { ...candidates[0].a, correction: true };

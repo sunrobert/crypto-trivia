@@ -4,7 +4,7 @@ import { createDb, migrate } from '../src/db.mjs';
 
 test('migrate applies each migration once', async () => {
   const db = createDb({ url: ':memory:' });
-  assert.deepEqual(await migrate(db), ['0001_initial.sql', '0002_pause.sql']);
+  assert.deepEqual(await migrate(db), ['0001_initial.sql', '0002_pause.sql', '0003_rejections.sql']);
   assert.deepEqual(await migrate(db), []);
   db.close();
 });

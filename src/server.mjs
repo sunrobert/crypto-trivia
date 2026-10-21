@@ -1,11 +1,10 @@
 import { SITE } from './config.mjs';
 import { homePage, infoPage } from './html.mjs';
-import { DEMO } from './demo.mjs';
+import { puzzleFor as lookup } from './puzzles.mjs';
 import { TIER_SCORES, matchAnswer, etDate, resetAt, ROUND_MS, PREVIEW_MS } from '../public/rules.mjs';
 import { THEMES } from '../public/themes/index.mjs';
 const theme = () => THEMES[SITE.theme] || THEMES.sea;
 
-const cache = new Map();
 const json = (data, status = 200, extra = {}) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store', ...extra } });
 const fail = (message, status = 400) => json({ error: message }, status);
 const playerId = request => request.headers.get('Cookie')?.match(/(?:^|;\s*)ct_player=([a-f0-9-]{36})/)?.[1];
@@ -14,15 +13,8 @@ function headers(response, additional = {}) {
   for (const [k, v] of Object.entries({ 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'Permissions-Policy': 'camera=(), microphone=(), geolocation=()', 'X-Frame-Options': 'SAMEORIGIN', ...additional })) h.set(k, v);
   return new Response(response.body, { status: response.status, headers: h });
 }
-async function puzzleFor(env, date) {
-  if (cache.has(date)) return cache.get(date);
-  const row = await env.DB.prepare('SELECT content FROM puzzles WHERE date=?').bind(date).first();
-  if (row) { const p = JSON.parse(row.content); cache.set(date, p); return p; }
-  return { ...DEMO, date, dayNumber: Math.floor((Date.parse(date) - Date.parse('2026-07-16')) / 86400000) + 1, sample: true };
-}
-async function saveSample(env, puzzle) {
-  if (puzzle.sample) await env.DB.prepare('INSERT OR IGNORE INTO puzzles(date,day_number,source,content) VALUES(?,?,?,?)').bind(puzzle.date, puzzle.dayNumber, puzzle.source, JSON.stringify(puzzle)).run();
-}
+const puzzleFor = (env, date) => lookup(env.DB, date, env.LAUNCH_DATE || SITE.launchDate);
+const dailyDone = async (env, player, date) => !!(await env.DB.prepare("SELECT 1 AS ok FROM runs WHERE player=? AND date=? AND mode='daily' AND completed=1").bind(player || '', date).first());
 function promptDTO(puzzle) {
   return { date: puzzle.date, dayNumber: puzzle.dayNumber, sample: !!puzzle.sample, source: puzzle.source, resetsAt: resetAt(puzzle.date), prompts: puzzle.prompts.map(({ id, text }) => ({ id, text })) };
 }
@@ -53,7 +45,7 @@ async function api(request, env, url) {
   }
   if (request.method === 'GET' && path === '/api/review') {
     const run = await ownRun(env, url.searchParams.get('run'), player);
-    if (!run?.completed) return fail('Finish today\'s game before opening the answer sheet.', 403);
+    if (!run?.completed || !await dailyDone(env, player, run.date)) return fail('Finish today\'s game before opening the answer sheet.', 403);
     const puzzle = await puzzleFor(env, run.date);
     const population = (await env.DB.prepare("SELECT r.id,SUM(a.score) AS score FROM runs r JOIN answers a ON a.run_id=r.id WHERE r.date=? AND r.mode='daily' AND r.completed=1 GROUP BY r.id").bind(run.date).all()).results;
     const own = await state(env, run);
@@ -70,7 +62,8 @@ async function api(request, env, url) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return fail('Invalid request.');
   if (path === '/api/start') {
     const id = player || crypto.randomUUID(), mode = data.practice === true ? 'practice' : 'daily';
-    const puzzle = await puzzleFor(env, date); await saveSample(env, puzzle);
+    if (mode === 'practice' && !await dailyDone(env, player, date)) return fail('Finish today\'s daily game before practicing.', 403);
+    await puzzleFor(env, date);
     let run = mode === 'daily' ? await env.DB.prepare("SELECT * FROM runs WHERE player=? AND date=? AND mode='daily'").bind(id, date).first() : null;
     if (!run) {
       const rid = crypto.randomUUID();
@@ -109,7 +102,10 @@ async function api(request, env, url) {
     // A late manual request cannot revive an expired answer window.
     const timely = !late || (data.timeout === true && Date.now() <= run.round_start + ROUND_MS + 1500);
     const match = raw && timely ? matchAnswer(raw,prompt.answers) : null;
-    if (!match && raw && !late && !data.timeout) return json({ rejected: true, message: theme().copy.reject.replace('{answer}', raw) });
+    if (!match && raw && !late && !data.timeout) {
+      await env.DB.prepare('INSERT INTO rejections(date,prompt_id,raw,created_at) VALUES(?,?,?,?)').bind(run.date, prompt.id, raw, Date.now()).run();
+      return json({ rejected: true, message: theme().copy.reject.replace('{answer}', raw) });
+    }
     if (match?.correction && data.confirm !== true && !late && !data.timeout && data.previewCorrection !== false) return json({ correction: match.answer, original: raw });
     const result = { round: run.next_round, rawAnswer: raw || null, answer: match?.answer || null, tier: match?.tier || null, score: match ? TIER_SCORES[match.tier] : 0, quip: match?.quip || null, promptText: prompt.text };
     const now = Date.now();

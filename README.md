@@ -18,6 +18,16 @@ Open http://localhost:3051. The local database is `.data/local.db` (ignored by g
 
 Checks: `npm test`, plus `node scripts/browser-audit.mjs` and `node scripts/mobile-flow-audit.mjs` against a running dev server.
 
+## Questions: public code, private bank
+
+The real daily questions live in a separate **private** repo so nobody can read tomorrow's answers on GitHub. This repo only ships a small labeled sample (`src/sample-bank.mjs`) so the game runs on a fresh clone.
+
+- Bank format: one file per day, `days/0001.json` … each with 7 prompts (`id`, `text`, `category`, `answers[]` of `{answer, tier, aliases}`; exactly one `satoshi` gem per prompt).
+- Check a bank: `npm run validate-bank -- ../crypto-trivia-bank/days`
+- Load it into the database: `npm run seed -- ../crypto-trivia-bank/days` (uses `TURSO_DATABASE_URL`; day 1 = `SITE.launchDate` or `LAUNCH_DATE`). Days already played are never overwritten unless `--force`.
+- After the last day, the bank reruns from day 1 with its re-ranked answers.
+- See what players typed that was rejected: `npm run rejections`.
+
 ## License
 
 MIT. See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

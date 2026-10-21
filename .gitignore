@@ -6,3 +6,6 @@ private/
 .DS_Store
 .data/
 .vercel/
+days/
+bank/
+*-bank/

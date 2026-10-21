@@ -5,8 +5,8 @@ const base=process.argv[2]||'http://localhost:3051',out=process.argv[3]||'output
 const browser=await chromium.launch({headless:true,channel:'chrome'}),context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),page=await context.newPage(),errors=[];
 page.on('pageerror',e=>errors.push(e.message));
 try{
- await page.goto(base+'/?test=1');await page.waitForFunction(()=>window.render_game_to_text);await page.locator('#practice-btn').click();
- const answers=['Mashed potatoes','Wolf','Dirk Nowitzki','Tungsten','Ghost station','France','Great Lakes Avengers'];
+ await page.goto(base+'/?test=1');await page.waitForFunction(()=>window.render_game_to_text);await page.locator('#start-btn').click({force:true});
+ const answers=['Dogecoin','QuadrigaCX','Algorand','Len Sassaman','NuBits','CryptoPunks','Allinvain'];
  for(let i=0;i<7;i++){
   await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='preview');if(local)await page.evaluate(()=>window.advanceTime(3100));await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='answering');await page.waitForTimeout(700);
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:out+`/round-${i+1}.png`});

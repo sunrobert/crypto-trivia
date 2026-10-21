@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handle } from '../src/server.mjs';
 import { createDb, migrate } from '../src/db.mjs';
-import { DEMO } from '../src/demo.mjs';
+import { SAMPLE } from '../src/sample-bank.mjs';
+import { seedBank } from '../src/bank.mjs';
+import { makeDay, addDays } from './helpers.mjs';
 import { SITE } from '../src/config.mjs';
 import { etDate, resetAt, normalize, matchAnswer, TIER_SCORES } from '../public/rules.mjs';
 import { homePage, infoPage } from '../src/html.mjs';
@@ -17,17 +19,17 @@ test('New York reset follows DST rather than device midnight',()=>{
 });
 test('answer matching normalizes accents, uses known aliases and avoids short fuzzy guesses',()=>{
   assert.equal(normalize('São Tomé & Príncipe'),'saotomeandprincipe');
-  assert.equal(matchAnswer('mashed',DEMO.prompts[0].answers).answer,'Mashed potatoes');
-  assert.equal(matchAnswer('Yttrum',DEMO.prompts[3].answers).correction,true);
-  assert.equal(matchAnswer('xyz',DEMO.prompts[3].answers),null);
-  assert.equal(matchAnswer('zzzzzzzzzz',DEMO.prompts[0].answers),null);
+  assert.equal(matchAnswer('Dogecoim',SAMPLE.prompts[0].answers).answer,'Dogecoin');
+  assert.equal(matchAnswer('Dogecoim',SAMPLE.prompts[0].answers).correction,true);
+  assert.equal(matchAnswer('xyz',SAMPLE.prompts[3].answers),null);
+  assert.equal(matchAnswer('zzzzzzzzzz',SAMPLE.prompts[0].answers),null);
 });
 test('seven rounds are scored on server; retries cannot duplicate points; other browsers cannot read the run',async()=>{
   const s=await service();let{body:game}=await s.call('/api/start',{});const id=game.runId;
-  const correction=await s.call('/api/answer',{runId:id,round:0,answer:'mashed'});assert.equal(correction.body.correction,'Mashed potatoes');
+  const correction=await s.call('/api/answer',{runId:id,round:0,answer:'Dogecoim'});assert.equal(correction.body.correction,'Dogecoin');
   const rejected=await s.call('/api/answer',{runId:id,round:0,answer:'zzzzzzzzzz'});assert.equal(rejected.body.rejected,true);
   for(let i=0;i<7;i++){
-    const answer=DEMO.prompts[i].answers.find(a=>a.tier==='satoshi').answer;
+    const answer=SAMPLE.prompts[i].answers.find(a=>a.tier==='satoshi').answer;
     const result=await s.call('/api/answer',{runId:id,round:i,answer,confirm:true,score:99999});assert.equal(result.status,200);assert.equal(result.body.result.score,TIER_SCORES.satoshi);game=result.body.state;
     const duplicate=await s.call('/api/answer',{runId:id,round:i,answer});assert.equal(duplicate.body.alreadyScored,true);assert.equal(duplicate.body.state.results.length,i+1);
     if(i<6){const n=await s.call('/api/next',{runId:id});assert.equal(n.body.round,i+1);}
@@ -44,7 +46,7 @@ test('review stays locked, pause is server-side and practice is separate',async(
   assert.equal((await s.call('/api/review?run='+g.runId)).status,403);
   const paused=await s.call('/api/pause',{runId:g.runId,paused:true});assert.ok(paused.body.pausedAt);
   const resumed=await s.call('/api/pause',{runId:g.runId,paused:false});assert.equal(resumed.body.pausedAt,null);assert.ok(resumed.body.roundStart>=g.roundStart);
-  const practice=await s.call('/api/start',{practice:true});assert.notEqual(practice.body.runId,g.runId);assert.equal(practice.body.mode,'practice');
+  assert.equal((await s.call('/api/start',{practice:true})).status,403);
   s.env.DB.close();
 });
 test('expired server windows cannot score late answers or be revived by pausing',async()=>{
@@ -52,7 +54,7 @@ test('expired server windows cannot score late answers or be revived by pausing'
   s.env.LOCAL_DEVELOPMENT='false';
   await s.env.DB.prepare('UPDATE runs SET round_start=? WHERE id=?').bind(Date.now()-30000,g.runId).run();
   const paused=await s.call('/api/pause',{runId:g.runId,paused:true});assert.equal(paused.body.pausedAt,null);
-  const late=await s.call('/api/answer',{runId:g.runId,round:0,answer:'Pommes soufflées',confirm:true,timeout:true});
+  const late=await s.call('/api/answer',{runId:g.runId,round:0,answer:SAMPLE.prompts[0].answers.find(a=>a.tier==='satoshi').answer,confirm:true,timeout:true});
   assert.equal(late.body.result.score,0);assert.equal(late.body.state.round,1);s.env.DB.close();
 });
 test('openkrillion-only routes are gone',async()=>{
@@ -77,5 +79,74 @@ test('rate limit keys use x-forwarded-for',async()=>{
   let last;for(let i=0;i<101;i++)last=await post('1.1.1.1');
   assert.equal(last.status,429);
   assert.notEqual((await post('2.2.2.2')).status,429);
+  s.env.DB.close();
+});
+
+async function finishDaily(s,day){
+  let{body:g}=await s.call('/api/start',{});
+  for(let i=0;i<7;i++){const r=await s.call('/api/answer',{runId:g.runId,round:i,answer:'',timeout:true});g=r.body.state;if(i<6)await s.call('/api/next',{runId:g.runId});}
+  assert.equal(g.completed,true);return g;
+}
+const walk=(v,f)=>{if(v&&typeof v==='object')for(const[k,x]of Object.entries(v)){f(k);walk(x,f);}};
+test('practice locked until daily done',async()=>{
+  const s=await service();
+  const early=await s.call('/api/start',{practice:true});assert.equal(early.status,403);assert.ok(early.body.error);
+  await finishDaily(s);
+  const practice=await s.call('/api/start',{practice:true});assert.equal(practice.status,200);assert.equal(practice.body.mode,'practice');
+  s.env.DB.close();
+});
+test('no answers leak before completion',async()=>{
+  const s=await service();const today=etDate();s.env.LAUNCH_DATE=today;
+  const days=[makeDay(1,'leak'),makeDay(2,'leak')];await seedBank(s.env.DB,days,{launchDate:today,today});
+  for(const path of ['/api/today','/api/today?date='+addDays(today,1)]){
+    const r=await s.call(path);const text=JSON.stringify(r.body);
+    walk(r.body,k=>assert.notEqual(k,'answers'));
+    for(const p of days[0].prompts)for(const a of p.answers)assert.ok(!text.includes(a.answer),a.answer);
+    for(const p of days[1].prompts)assert.ok(!text.includes(p.text),p.text);
+    assert.equal(r.body.prompts[0].text,days[0].prompts[0].text);
+  }
+  const{body:g}=await s.call('/api/start',{});
+  await s.call('/api/answer',{runId:g.runId,round:0,answer:'leak1p0x0'});
+  const st=JSON.stringify((await s.call('/api/state?run='+g.runId)).body);
+  for(const p of days[0].prompts)for(const a of p.answers)if(a.answer!=='leak1p0x0')assert.ok(!st.includes(a.answer),a.answer);
+  assert.equal((await s.call('/api/review?run='+g.runId)).status,403);
+  s.env.DB.close();
+});
+test('run started before midnight scores against its own date',async(t)=>{
+  const s=await service();const real=Date.now;t.after(()=>{Date.now=real;});
+  const D='2026-12-10',launch=D;s.env.LAUNCH_DATE=launch;
+  await seedBank(s.env.DB,[makeDay(1,'mid'),makeDay(2,'mid')],{launchDate:launch,today:'2000-01-01'});
+  Date.now=()=>Date.parse('2026-12-11T04:59:50Z');assert.equal(etDate(),D);
+  const{body:g}=await s.call('/api/start',{});assert.equal(g.date,D);
+  Date.now=()=>Date.parse('2026-12-11T05:00:05Z');assert.equal(etDate(),'2026-12-11');
+  const r=await s.call('/api/answer',{runId:g.runId,round:0,answer:'mid1p0gem'});
+  assert.equal(r.body.result.score,100);assert.equal(r.body.result.promptText,'mid day 1 prompt 0');
+  s.env.DB.close();
+});
+test('bank exhausted reruns day 1 with its re-tiered answers',async()=>{
+  const { puzzleFor } = await import('../src/puzzles.mjs');
+  const s=await service();const today=etDate(),launch=addDays(today,-2);s.env.LAUNCH_DATE=launch;
+  await seedBank(s.env.DB,[makeDay(1,'ex'),makeDay(2,'ex')],{launchDate:launch,today:launch});
+  const row=await s.env.DB.prepare('SELECT content FROM puzzles WHERE date=?').bind(launch).first(),c=JSON.parse(row.content);
+  c.prompts[0].answers[1].tier='og';await s.env.DB.prepare('UPDATE puzzles SET content=? WHERE date=?').bind(JSON.stringify(c),launch).run();
+  const p=await puzzleFor(s.env.DB,today,launch);
+  assert.deepEqual(p.prompts.map(x=>x.id),makeDay(1,'ex').prompts.map(x=>x.id));
+  assert.equal(p.dayNumber,3);assert.equal(p.prompts[0].answers[1].tier,'og');assert.equal(p.rerunOf,launch);
+  const snap=await s.env.DB.prepare('SELECT source FROM puzzles WHERE date=?').bind(today).first();assert.equal(snap.source,'rerun');
+  c.prompts[0].answers[1].tier='holder';await s.env.DB.prepare('UPDATE puzzles SET content=? WHERE date=?').bind(JSON.stringify(c),launch).run();
+  assert.equal((await puzzleFor(s.env.DB,today,launch)).prompts[0].answers[1].tier,'og');
+  const api=await s.call('/api/today');assert.equal(api.body.dayNumber,3);assert.equal(api.body.sample,false);
+  s.env.DB.close();
+});
+test('fresh database serves the sample',async()=>{
+  const s=await service();const r=await s.call('/api/today');
+  assert.equal(r.body.sample,true);assert.deepEqual(r.body.prompts.map(p=>p.text),SAMPLE.prompts.map(p=>p.text));
+  s.env.DB.close();
+});
+test('rejected guesses are logged',async()=>{
+  const s=await service();const{body:g}=await s.call('/api/start',{});
+  const r=await s.call('/api/answer',{runId:g.runId,round:0,answer:'zzzzzzzzzz'});assert.equal(r.body.rejected,true);
+  const rows=(await s.env.DB.prepare('SELECT * FROM rejections').all()).results;
+  assert.equal(rows.length,1);assert.equal(rows[0].date,etDate());assert.equal(rows[0].prompt_id,SAMPLE.prompts[0].id);assert.equal(rows[0].raw,'zzzzzzzzzz');
   s.env.DB.close();
 });
