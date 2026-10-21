@@ -42,3 +42,11 @@ test('sound cues merge theme overrides', () => {
   assert.equal(merged.submit[0].from, 1);
   for (const k of Object.keys(SOUND_CUES)) if (k !== 'submit') assert.deepEqual(merged[k], SOUND_CUES[k]);
 });
+
+test('?theme= previews another registered theme; unknown ids fall back to the configured one', async () => {
+  const { homePage } = await import('../src/html.mjs');
+  const { SITE } = await import('../src/config.mjs');
+  assert.match(homePage({}, 'sea'), /data-theme="sea"/);
+  assert.match(homePage({}, 'nope'), new RegExp(`data-theme="${SITE.theme}"`));
+  assert.match(homePage({}), new RegExp(`data-theme="${SITE.theme}"`));
+});

@@ -138,7 +138,7 @@ export default {
     try {
       if (url.pathname.startsWith('/api/')) return headers(await api(request,env,url));
       if (!['GET','HEAD'].includes(request.method)) return headers(fail('Method not allowed.',405));
-      if (url.pathname === '/') return headers(new Response(request.method==='HEAD'?null:homePage(env),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache'}}));
+      if (url.pathname === '/') return headers(new Response(request.method==='HEAD'?null:homePage(env,url.searchParams.get('theme')),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache'}}));
       if (['/privacy','/about'].includes(url.pathname)) return headers(new Response(request.method==='HEAD'?null:infoPage(url.pathname,env),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=300'}}));
       if (url.pathname === '/robots.txt') return headers(new Response(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${(env.SITE_URL||SITE.origin)}/sitemap.xml\n`,{headers:{'Content-Type':'text/plain; charset=utf-8'}}));
       if (url.pathname === '/sitemap.xml') return headers(new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+['/','/about','/privacy'].map(p=>`<url><loc>${env.SITE_URL||SITE.origin}${p}</loc></url>`).join('')+'</urlset>',{headers:{'Content-Type':'application/xml; charset=utf-8'}}));

@@ -1,6 +1,6 @@
 import { SITE } from './config.mjs';
 import { THEMES } from '../public/themes/index.mjs';
-const themeFor = () => THEMES[SITE.theme] || THEMES.sea;
+const themeFor = id => THEMES[id] || THEMES[SITE.theme] || THEMES.sea;
 
 export const esc = value => String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function head(title=SITE.title,description=SITE.description,path='/',env={}) {
@@ -10,8 +10,8 @@ function head(title=SITE.title,description=SITE.description,path='/',env={}) {
 export function originalFooter() {
   return `<footer class="original-footer"><p><a href="/about">Open source. Built on OpenKrillion.</a></p><nav aria-label="Site footer"><a href="${SITE.repository}" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="${SITE.repository}/issues" target="_blank" rel="noopener noreferrer">Report a bug</a><a href="/privacy">Privacy</a><a href="/about">About</a></nav></footer>`;
 }
-export function homePage(env={}) {
-  const theme=themeFor(),copy=theme.copy,mascot=theme.sprites.buddies[0];
+export function homePage(env={},themeId) {
+  const theme=themeFor(themeId),copy=theme.copy,mascot=theme.sprites.buddies[0];
   const letters=[...SITE.name.toUpperCase().replace(/\s+/g,'')].map((c,i)=>`<span style="--letter:${i}">${esc(c)}</span>`).join('');
   const schema={ '@context':'https://schema.org','@type':'VideoGame',name:SITE.name,url:env.SITE_URL||SITE.origin,description:SITE.description,applicationCategory:'Game',gamePlatform:'Web browser',operatingSystem:'Any',inLanguage:'en',isAccessibleForFree:true,license:'https://opensource.org/license/mit',codeRepository:SITE.repository,offers:{'@type':'Offer',price:0,priceCurrency:'USD'},genre:['Trivia','Word game'] };
   return `<!doctype html><html lang="en" data-theme="${theme.id}"><head>${head(undefined,undefined,'/',env)}<script type="application/ld+json">${JSON.stringify(schema)}</script></head><body data-phase="intro" data-theme="${theme.id}"><main id="game" aria-label="${esc(SITE.name)} daily trivia game"><canvas id="ocean" aria-label="${esc(copy.canvasLabel)}"></canvas><div class="vignette" aria-hidden="true"></div><div class="danger-glow" aria-hidden="true"></div><div class="crt" aria-hidden="true"></div><div class="flash" aria-hidden="true"></div>
