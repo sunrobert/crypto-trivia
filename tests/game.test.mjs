@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker from '../src/worker.mjs';
+import { handle } from '../src/server.mjs';
 import { createDb, migrate } from '../src/db.mjs';
 import { DEMO } from '../src/demo.mjs';
 import { SITE } from '../src/config.mjs';
 import { etDate, resetAt, normalize, matchAnswer, TIER_SCORES } from '../public/rules.mjs';
 import { homePage, infoPage } from '../src/html.mjs';
 
-async function service(){const DB=createDb({url:':memory:'});await migrate(DB);const env={DB,LOCAL_DEVELOPMENT:'true',ASSETS:{fetch:async()=>new Response('not found',{status:404})}};let cookie='';return{env,async call(path,data,extra={}){const r=await worker.fetch(new Request('http://localhost:3051'+path,{...(data===undefined?{}:{method:'POST',body:JSON.stringify(data),headers:{'Content-Type':'application/json','Cookie':cookie,...extra}}),...(data===undefined?{headers:{Cookie:cookie,...extra}}:{})}),env,{});if(r.headers.get('Set-Cookie'))cookie=r.headers.get('Set-Cookie').split(';')[0];return{status:r.status,body:await r.json()}},cookie:()=>cookie};}
+async function service(){const DB=createDb({url:':memory:'});await migrate(DB);const env={DB,LOCAL_DEVELOPMENT:'true',ASSETS:{fetch:async()=>new Response('not found',{status:404})}};let cookie='';return{env,async call(path,data,extra={}){const r=await handle(new Request('http://localhost:3051'+path,{...(data===undefined?{}:{method:'POST',body:JSON.stringify(data),headers:{'Content-Type':'application/json','Cookie':cookie,...extra}}),...(data===undefined?{headers:{Cookie:cookie,...extra}}:{})}),env);if(r.headers.get('Set-Cookie'))cookie=r.headers.get('Set-Cookie').split(';')[0];return{status:r.status,body:await r.json()}},cookie:()=>cookie};}
 
 test('New York reset follows DST rather than device midnight',()=>{
   assert.equal(etDate(Date.parse('2026-10-17T03:59:59Z')),'2026-10-16');
@@ -57,7 +57,7 @@ test('expired server windows cannot score late answers or be revived by pausing'
 });
 test('openkrillion-only routes are gone',async()=>{
   const s=await service();
-  for(const path of ['/llms.txt','/llms-full.txt','/pricing.md','/models.md','/BingSiteAuth.xml','/media/assets/og.png']){const r=await worker.fetch(new Request('http://localhost:3051'+path),s.env,{});assert.equal(r.status,404,path);}
+  for(const path of ['/llms.txt','/llms-full.txt','/pricing.md','/models.md','/BingSiteAuth.xml','/media/assets/og.png']){const r=await handle(new Request('http://localhost:3051'+path),s.env);assert.equal(r.status,404,path);}
   const admin=await s.call('/api/admin/sync',{});assert.equal(admin.status,404);
   s.env.DB.close();
 });
@@ -68,6 +68,14 @@ test('home page has no analytics, AI links, guide or krillion branding',()=>{
   const about=infoPage('/about');assert.match(about,/OpenKrillion/);assert.ok(about.includes('https://github.com/VulcanEon/openkrillion.com-service'));
 });
 test('player cookie is ct_player',async()=>{
-  const s=await service();const r=await worker.fetch(new Request('http://localhost:3051/api/start',{method:'POST',body:'{}',headers:{'Content-Type':'application/json'}}),s.env,{});
+  const s=await service();const r=await handle(new Request('http://localhost:3051/api/start',{method:'POST',body:'{}',headers:{'Content-Type':'application/json'}}),s.env);
   assert.match(r.headers.get('Set-Cookie'),/^ct_player=/);s.env.DB.close();
+});
+test('rate limit keys use x-forwarded-for',async()=>{
+  const s=await service();
+  const post=ip=>handle(new Request('http://localhost:3051/api/feedback',{method:'POST',body:'{}',headers:{'Content-Type':'application/json','x-forwarded-for':ip+', 10.0.0.1'}}),s.env);
+  let last;for(let i=0;i<101;i++)last=await post('1.1.1.1');
+  assert.equal(last.status,429);
+  assert.notEqual((await post('2.2.2.2')).status,429);
+  s.env.DB.close();
 });

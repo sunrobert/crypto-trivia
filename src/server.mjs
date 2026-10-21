@@ -37,7 +37,7 @@ async function ownRun(env, id, player) {
 }
 async function limit(env, request, player) {
   const window = Math.floor(Date.now() / 60000);
-  const raw = `${player || ''}|${request.headers.get('CF-Connecting-IP') || 'local'}|${window}`;
+  const raw = `${player || ''}|${request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'local'}|${window}`;
   const key = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw)))].map(x => x.toString(16).padStart(2, '0')).join('');
   const count = await env.DB.prepare('INSERT INTO rate_limits(key,window,count) VALUES(?,?,1) ON CONFLICT(key,window) DO UPDATE SET count=count+1 RETURNING count').bind(key, window).first();
   if (count.count === 1) await env.DB.prepare('DELETE FROM rate_limits WHERE window<?').bind(window - 5).run();
@@ -132,8 +132,8 @@ async function api(request, env, url) {
   }
   return fail('Unknown endpoint.',404);
 }
-export default {
-  async fetch(request,env,ctx) {
+// Single entry point for Vercel and the local dev server. Static files are served before this runs.
+export async function handle(request, env) {
     const url = new URL(request.url);
     try {
       if (url.pathname.startsWith('/api/')) return headers(await api(request,env,url));
@@ -142,8 +142,6 @@ export default {
       if (['/privacy','/about'].includes(url.pathname)) return headers(new Response(request.method==='HEAD'?null:infoPage(url.pathname,env),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=300'}}));
       if (url.pathname === '/robots.txt') return headers(new Response(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${(env.SITE_URL||SITE.origin)}/sitemap.xml\n`,{headers:{'Content-Type':'text/plain; charset=utf-8'}}));
       if (url.pathname === '/sitemap.xml') return headers(new Response('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+['/','/about','/privacy'].map(p=>`<url><loc>${env.SITE_URL||SITE.origin}${p}</loc></url>`).join('')+'</urlset>',{headers:{'Content-Type':'application/xml; charset=utf-8'}}));
-      const asset = await env.ASSETS.fetch(request);
-      return headers(asset, asset.ok ? { 'Cache-Control': url.pathname.endsWith('.woff2') ? 'public, max-age=31536000, immutable' : 'public, max-age=300' } : {});
+      return headers(fail('Not found.',404));
     } catch (e) { console.error('Request failed:',e.message); return headers(fail('The signal is temporarily lost. Please retry.',503)); }
-  },
-};
+}

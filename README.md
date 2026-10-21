@@ -6,7 +6,17 @@ Built on [OpenKrillion](https://github.com/VulcanEon/openkrillion.com-service) (
 
 ## Run locally
 
-_Finished in a later step (Vercel + Turso port)._
+Node.js 24+. No cloud account needed.
+
+```sh
+npm ci
+npm run build
+npm run dev
+```
+
+Open http://localhost:3051. The local database is `.data/local.db` (ignored by git). Add `?theme=sea` to preview the fallback sea theme.
+
+Checks: `npm test`, plus `node scripts/browser-audit.mjs` and `node scripts/mobile-flow-audit.mjs` against a running dev server.
 
 ## License
 
