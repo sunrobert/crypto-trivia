@@ -11,13 +11,17 @@
     "deploy": "npm run build && wrangler deploy --config wrangler.production.jsonc",
     "db:local": "wrangler d1 migrations apply openkrillion --local",
     "db:remote": "wrangler d1 migrations apply openkrillion --remote --config wrangler.production.jsonc",
+    "db:migrate": "node scripts/migrate.mjs",
     "test:browser": "node scripts/browser-audit.mjs",
     "test:mobile": "node scripts/mobile-flow-audit.mjs"
   },
   "devDependencies": {
-    "wrangler": "4.151.1",
-    "sharp": "^0.35.5",
+    "@fontsource/vt323": "^5.2.7",
     "playwright": "^1.58.0",
-    "@fontsource/vt323": "^5.2.7"
+    "sharp": "^0.35.5",
+    "wrangler": "4.151.1"
+  },
+  "dependencies": {
+    "@libsql/client": "0.18.0"
   }
 }
