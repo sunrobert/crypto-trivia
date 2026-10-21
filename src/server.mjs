@@ -1,6 +1,7 @@
 import { SITE } from './config.mjs';
 import { homePage, infoPage } from './html.mjs';
 import { puzzleFor as lookup } from './puzzles.mjs';
+import { runRetier } from './retier.mjs';
 import { TIER_SCORES, matchAnswer, etDate, resetAt, ROUND_MS, PREVIEW_MS } from '../public/rules.mjs';
 import { THEMES } from '../public/themes/index.mjs';
 const theme = () => THEMES[SITE.theme] || THEMES.sea;
@@ -53,6 +54,10 @@ async function api(request, env, url) {
     const dist = Array.from({ length: 71 }, () => 0);
     others.forEach(p => dist[Math.min(70, Math.floor(p.score / 10))]++);
     return json({ prompts: puzzle.prompts.map(p => ({ ...p, answers: p.answers.map(a => ({ ...a, score: TIER_SCORES[a.tier] })).sort((a,b) => b.score - a.score || a.answer.localeCompare(b.answer)) })), population: others.length, betterThan: others.length >= 5 ? Math.round(others.filter(p => p.score < own.score).length / others.length * 100) : null, dist });
+  }
+  if (request.method === 'GET' && path === '/api/cron/retier') {
+    if (!env.CRON_SECRET || request.headers.get('Authorization') !== `Bearer ${env.CRON_SECRET}`) return fail('Unknown endpoint.', 404);
+    return json(await runRetier(env.DB, date));
   }
   if (request.method !== 'POST') return fail('Unknown endpoint.', 404);
   if (request.headers.get('Origin') && request.headers.get('Origin') !== url.origin) return fail('Cross-origin requests are not accepted.', 403);
