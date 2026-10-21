@@ -35,7 +35,7 @@ export class Scene {
     for(const p of this.particles){c.globalAlpha=p.life;paint.particle.call(this,p);}c.globalAlpha=1;
     const introTop=document.getElementById('intro')?.offsetTop||l.height-190,fadeTop=this.phase==='intro'?introTop-14:l.height-85,fade=c.createLinearGradient(0,fadeTop,0,this.phase==='intro'?fadeTop+85:l.height+40);fade.addColorStop(0,pal.ink+'00');fade.addColorStop(.35,pal.ink+'de');fade.addColorStop(1,pal.ink);c.fillStyle=fade;c.fillRect(0,fadeTop,w,h-fadeTop);
     paint.foreground.call(this,frame);
-    const hero=document.getElementById('hero');if(hero){hero.style.top=(sea-336)+'px';hero.style.opacity=['intro','done'].includes(this.phase)?'1':this.phase==='preview'?String(clamp((sea-175)/360,0,1)):'0';}
+    const hero=document.getElementById('hero');if(hero){hero.style.top=(sea-336)+'px';hero.style.opacity=this.phase==='intro'?'1':this.phase==='preview'?String(clamp((sea-175)/360,0,1)):'0';}
     if(['preview','answering','plunge'].includes(this.phase)){const card=document.getElementById('prompt-card');if(card)card.style.top=worldY(this.roundBase||0)+'px';}
     if(this.phase==='plunge')document.querySelectorAll('.tier-line').forEach(line=>line.style.top=worldY((this.fx?.startDepth||0)+Number(line.dataset.score)*10)+'px');
     const landing=document.getElementById('landing');if(landing&&this.phase==='landed')landing.style.top=(worldY(this.target)-124)+'px';

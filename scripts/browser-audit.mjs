@@ -30,7 +30,7 @@ try{
     if(i===5&&local){await page.locator('#answer').fill('');await page.evaluate(()=>window.advanceTime(26000));}else{await page.locator('#answer').fill(answers[i]);await page.locator('#answer').press('Enter');}
     await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='landed',{timeout:20000});
   }
-  await page.locator('#next-btn').click();await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='done',{timeout:20000});await page.waitForFunction(()=>!document.getElementById('distribution').textContent.includes('Sounding'));
+  await page.locator('#next-btn').click();await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='done',{timeout:20000});await page.waitForFunction(()=>!!document.querySelector('#distribution svg'));
   const state=await page.evaluate(()=>JSON.parse(window.render_game_to_text()));assert.equal(state.results.length,7);assert.ok(state.score>=300);assert.equal(state.results[6].score,local?0:100);assert.equal(state.sound.state,'running');
   await page.screenshot({path:output+'/desktop-results.png'});await page.locator('[data-review="3"]').click();assert.ok(await page.locator('.review-expanded').nth(3).isVisible());
   await page.locator('#copy-result').click();assert.ok((await page.evaluate(()=>navigator.clipboard.readText())).includes(' #'));

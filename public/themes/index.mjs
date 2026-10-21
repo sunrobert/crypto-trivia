@@ -1,2 +1,3 @@
 import sea from './sea.mjs';
-export const THEMES = { sea };
+import mine from './mine.mjs';
+export const THEMES = { sea, mine };

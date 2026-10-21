@@ -1,8 +1,8 @@
 // Original, reproducible pixel illustrations. No sampled reference pixels or external image inputs.
-const mix=(a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t));
-const rgb=c=>'#'+c.map(v=>Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('');
-const hash=(x,y)=>{const n=Math.sin(x*31.7+y*83.9)*48731.5;return n-Math.floor(n)};
-class Pixels{
+export const mix=(a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t));
+export const rgb=c=>'#'+c.map(v=>Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('');
+export const hash=(x,y)=>{const n=Math.sin(x*31.7+y*83.9)*48731.5;return n-Math.floor(n)};
+export class Pixels{
  constructor(){this.p=Array.from({length:64},()=>Array(64).fill(null))}
  put(x,y,c){x=Math.round(x);y=Math.round(y);if(x>=0&&x<64&&y>=0&&y<64)this.p[y][x]=c}
  rect(x,y,w,h,c){for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)this.put(i,j,c)}

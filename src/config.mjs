@@ -6,6 +6,6 @@ export const SITE = {
   description: 'A daily crypto trivia game for crypto Twitter. Seven prompts, 25 seconds each. Obvious answers barely score; rare correct answers dig deep.',
   title: 'Crypto Trivia — the daily rare-answer crypto game',
   rounds: 7, previewSeconds: 3, answerSeconds: 25, maxScore: 700, metresPerPoint: 10,
-  theme: 'sea',
+  theme: 'mine',
   launchDate: '2026-12-01',
 };
