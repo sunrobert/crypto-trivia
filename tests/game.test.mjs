@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import worker from '../src/worker.mjs';
 import { DEMO } from '../src/demo.mjs';
 import { SITE } from '../src/config.mjs';
-import { etDate, resetAt, normalize, matchAnswer, TIERS } from '../public/rules.mjs';
+import { etDate, resetAt, normalize, matchAnswer, TIER_SCORES } from '../public/rules.mjs';
 import { homePage, infoPage } from '../src/html.mjs';
 
 function database(){
@@ -45,8 +45,8 @@ test('seven rounds are scored on server; retries cannot duplicate points; other 
   const correction=await s.call('/api/answer',{runId:id,round:0,answer:'mashed'});assert.equal(correction.body.correction,'Mashed potatoes');
   const rejected=await s.call('/api/answer',{runId:id,round:0,answer:'zzzzzzzzzz'});assert.equal(rejected.body.rejected,true);
   for(let i=0;i<7;i++){
-    const answer=DEMO.prompts[i].answers.find(a=>a.tier==='krillion').answer;
-    const result=await s.call('/api/answer',{runId:id,round:i,answer,confirm:true,score:99999});assert.equal(result.status,200);assert.equal(result.body.result.score,TIERS.krillion.score);game=result.body.state;
+    const answer=DEMO.prompts[i].answers.find(a=>a.tier==='satoshi').answer;
+    const result=await s.call('/api/answer',{runId:id,round:i,answer,confirm:true,score:99999});assert.equal(result.status,200);assert.equal(result.body.result.score,TIER_SCORES.satoshi);game=result.body.state;
     const duplicate=await s.call('/api/answer',{runId:id,round:i,answer});assert.equal(duplicate.body.alreadyScored,true);assert.equal(duplicate.body.state.results.length,i+1);
     if(i<6){const n=await s.call('/api/next',{runId:id});assert.equal(n.body.round,i+1);}
   }

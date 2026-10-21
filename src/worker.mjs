@@ -1,7 +1,9 @@
 import { SITE } from './config.mjs';
 import { homePage, infoPage } from './html.mjs';
 import { DEMO } from './demo.mjs';
-import { TIERS, normalize, matchAnswer, etDate, resetAt, ROUND_MS, PREVIEW_MS } from '../public/rules.mjs';
+import { TIER_SCORES, matchAnswer, etDate, resetAt, ROUND_MS, PREVIEW_MS } from '../public/rules.mjs';
+import { THEMES } from '../public/themes/index.mjs';
+const theme = () => THEMES[SITE.theme] || THEMES.sea;
 
 const cache = new Map();
 const json = (data, status = 200, extra = {}) => Response.json(data, { status, headers: { 'Cache-Control': 'no-store', ...extra } });
@@ -47,18 +49,18 @@ async function api(request, env, url) {
   if (request.method === 'GET' && path === '/api/health') return json({ ok: true, name: SITE.name, database: !!(await env.DB.prepare('SELECT 1 AS ok').first()) });
   if (request.method === 'GET' && path === '/api/state') {
     const run = await ownRun(env, url.searchParams.get('run'), player);
-    return run ? json(await state(env, run)) : fail('Dive not found on this browser.', 404);
+    return run ? json(await state(env, run)) : fail('Game not found on this browser.', 404);
   }
   if (request.method === 'GET' && path === '/api/review') {
     const run = await ownRun(env, url.searchParams.get('run'), player);
-    if (!run?.completed) return fail('Finish your dive before opening the answer sheet.', 403);
+    if (!run?.completed) return fail('Finish today\'s game before opening the answer sheet.', 403);
     const puzzle = await puzzleFor(env, run.date);
     const population = (await env.DB.prepare("SELECT r.id,SUM(a.score) AS score FROM runs r JOIN answers a ON a.run_id=r.id WHERE r.date=? AND r.mode='daily' AND r.completed=1 GROUP BY r.id").bind(run.date).all()).results;
     const own = await state(env, run);
     const others = population.filter(p => p.id !== run.id);
     const dist = Array.from({ length: 71 }, () => 0);
     others.forEach(p => dist[Math.min(70, Math.floor(p.score / 10))]++);
-    return json({ prompts: puzzle.prompts.map(p => ({ ...p, answers: p.answers.map(a => ({ ...a, score: TIERS[a.tier].score })).sort((a,b) => b.score - a.score || a.answer.localeCompare(b.answer)) })), population: others.length, betterThan: others.length >= 5 ? Math.round(others.filter(p => p.score < own.score).length / others.length * 100) : null, dist });
+    return json({ prompts: puzzle.prompts.map(p => ({ ...p, answers: p.answers.map(a => ({ ...a, score: TIER_SCORES[a.tier] })).sort((a,b) => b.score - a.score || a.answer.localeCompare(b.answer)) })), population: others.length, betterThan: others.length >= 5 ? Math.round(others.filter(p => p.score < own.score).length / others.length * 100) : null, dist });
   }
   if (request.method !== 'POST') return fail('Unknown endpoint.', 404);
   if (request.headers.get('Origin') && request.headers.get('Origin') !== url.origin) return fail('Cross-origin requests are not accepted.', 403);
@@ -79,7 +81,7 @@ async function api(request, env, url) {
   }
   if (path === '/api/pause') {
     const run = await ownRun(env,data.runId,player);
-    if (!run) return fail('Dive not found.',404);
+    if (!run) return fail('Game not found.',404);
     if (data.paused === true && !run.completed && run.round_start !== null && !run.paused_at && Date.now() <= run.round_start + ROUND_MS) {
       await env.DB.prepare('UPDATE runs SET paused_at=? WHERE id=? AND paused_at IS NULL').bind(Date.now(),run.id).run();
     } else if (data.paused === false && run.paused_at) {
@@ -89,15 +91,15 @@ async function api(request, env, url) {
   }
   if (path === '/api/next') {
     const run = await ownRun(env, data.runId, player);
-    if (!run) return fail('Dive not found.',404);
-    if (run.paused_at) return fail('Close the menu to resume your dive.',409);
+    if (!run) return fail('Game not found.',404);
+    if (run.paused_at) return fail('Close the menu to resume your game.',409);
     if (!run.completed && run.round_start === null) await env.DB.prepare('UPDATE runs SET round_start=? WHERE id=? AND round_start IS NULL AND completed=0').bind(Date.now()+PREVIEW_MS,run.id).run();
     return json(await state(env, await ownRun(env,run.id,player)));
   }
   if (path === '/api/answer') {
     const run = await ownRun(env,data.runId,player);
-    if (!run) return fail('Dive not found.',404);
-    if (run.paused_at) return fail('Close the menu to resume your dive.',409);
+    if (!run) return fail('Game not found.',404);
+    if (run.paused_at) return fail('Close the menu to resume your game.',409);
     if (run.completed || run.round_start === null || data.round !== run.next_round) return json({ state: await state(env, run), alreadyScored: true });
     if (Date.now() < run.round_start && env.LOCAL_DEVELOPMENT !== 'true') return fail('The answer window has not opened yet.',409);
     const puzzle = await puzzleFor(env,run.date), prompt = puzzle.prompts[run.next_round];
@@ -107,9 +109,9 @@ async function api(request, env, url) {
     // A late manual request cannot revive an expired answer window.
     const timely = !late || (data.timeout === true && Date.now() <= run.round_start + ROUND_MS + 1500);
     const match = raw && timely ? matchAnswer(raw,prompt.answers) : null;
-    if (!match && raw && !late && !data.timeout) return json({ rejected: true, message: `“${raw}”: no echo. try again` });
+    if (!match && raw && !late && !data.timeout) return json({ rejected: true, message: theme().copy.reject.replace('{answer}', raw) });
     if (match?.correction && data.confirm !== true && !late && !data.timeout && data.previewCorrection !== false) return json({ correction: match.answer, original: raw });
-    const result = { round: run.next_round, rawAnswer: raw || null, answer: match?.answer || null, tier: match?.tier || null, score: match ? TIERS[match.tier].score : 0, quip: match?.quip || null, promptText: prompt.text };
+    const result = { round: run.next_round, rawAnswer: raw || null, answer: match?.answer || null, tier: match?.tier || null, score: match ? TIER_SCORES[match.tier] : 0, quip: match?.quip || null, promptText: prompt.text };
     const now = Date.now();
     await env.DB.batch([
       env.DB.prepare('INSERT OR IGNORE INTO answers(run_id,round,raw_answer,answer,tier,score,created_at) SELECT id,?,?,?,?,?,? FROM runs WHERE id=? AND next_round=? AND round_start IS NOT NULL AND completed=0').bind(result.round,result.rawAnswer,result.answer,result.tier,result.score,now,run.id,result.round),
@@ -120,7 +122,7 @@ async function api(request, env, url) {
     return json({ result: { ...result, ...accepted }, state: fresh });
   }
   if (path === '/api/feedback') {
-    if (!player) return fail('Play a dive first.',403);
+    if (!player) return fail('Play a game first.',403);
     const text = String(data.text || '').trim().slice(0,1000), kind = data.kind === 'suggestion' ? 'suggestion' : 'rating';
     if (!text) return fail('Please enter a message.');
     const existing = await env.DB.prepare('SELECT COUNT(*) AS n FROM feedback WHERE player=? AND date=?').bind(player,date).first();

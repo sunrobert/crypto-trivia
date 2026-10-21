@@ -12,13 +12,14 @@ export const SOUND_CUES = {
   sink: [{ from: 1150, duration: .7, attack: .01, volume: .1 }, { noise: true, duration: 1.3, lowpass: 1400, sweep: 180, volume: .16 }, { from: 300, to: 60, duration: 1.3, volume: .1 }],
   small: [{ from: 140, to: 70, duration: .25, volume: .28, lowpass: 600 }, { noise: true, duration: .14, lowpass: 500, volume: .1 }],
   big: [{ from: 80, to: 45, duration: .6, volume: .38 }, { noise: true, duration: .7, lowpass: 900, sweep: 200, volume: .18, delay: .02 }, { from: 523, duration: .4, volume: .09, type: 'triangle', delay: .15 }],
-  krillion: [{ from: 60, to: 40, duration: 1.2, volume: .34 }, ...[784, 988, 1175, 1568].map((from, i) => ({ from, duration: .7, volume: .15, type: 'triangle', lowpass: 3000, delay: i * .13 })), { noise: true, duration: 1.4, lowpass: 2500, highpass: 1200, volume: .05, delay: .3 }],
+  satoshi: [{ from: 60, to: 40, duration: 1.2, volume: .34 }, ...[784, 988, 1175, 1568].map((from, i) => ({ from, duration: .7, volume: .15, type: 'triangle', lowpass: 3000, delay: i * .13 })), { noise: true, duration: 1.4, lowpass: 2500, highpass: 1200, volume: .05, delay: .3 }],
   miss: [{ from: 220, to: 52, duration: .7, volume: .24 }, { noise: true, duration: .5, lowpass: 400, volume: .14, delay: .05 }],
   tick: [{ from: 880, duration: .07, volume: .16 }, { from: 880, duration: .05, volume: .06, delay: .12 }],
   surface: [{ noise: true, duration: 1.6, lowpass: 300, sweep: 3000, volume: .16 }, { from: 80, to: 600, duration: 1.5, volume: .08 }],
 };
+export const cuesFor = theme => ({ ...SOUND_CUES, ...(theme?.sounds || {}) });
 export class Sound {
-  constructor() { this.muted = false; this.ac = null; this.master = null; }
+  constructor(theme) { this.muted = false; this.ac = null; this.master = null; this.cues = cuesFor(theme); }
   async init() {
     try {
       if (!this.visibilityBound) {
@@ -75,13 +76,13 @@ export class Sound {
       this.ac.resume().then(() => { if (performance.now() - started < 250 && this.ac.state === 'running') this.event(name); }).catch(() => {});
       return;
     }
-    const aliases = { plankton: 'small', tooclever: 'small', schooler: 'big', rare: 'big', deepcut: 'big', descend: 'begin' };
-    if (name === 'blub') {
+    const aliases = { normie: 'small', midcurve: 'small', holder: 'big', degen: 'big', og: 'big', descend: 'begin' };
+    if (name === 'poke' && !this.cues.poke) {
       const variation = .85 + Math.random() * .45;
       this.play({ from: 260 * variation, to: 720 * variation, duration: .13, volume: .22, lowpass: 2200 });
       this.play({ noise: true, duration: .05, lowpass: 1800, highpass: 700, volume: .05 });
       return;
     }
-    for (const cue of SOUND_CUES[aliases[name] || name] || []) this.play(cue);
+    for (const cue of this.cues[aliases[name] || name] || []) this.play(cue);
   }
 }

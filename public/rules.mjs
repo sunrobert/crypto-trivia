@@ -1,17 +1,12 @@
-export const TIERS = {
-  plankton: { name: 'Plankton', score: 10, emoji: '🫧', color: '#8fa3c4', blurb: 'The answer everyone blurts out.' },
-  tooclever: { name: 'Too Clever', score: 15, emoji: '🤡', color: '#ff9f43', blurb: 'The obscure answer the whole school thought of.' },
-  schooler: { name: 'Schooler', score: 30, emoji: '🐟', color: '#4de3ff', blurb: 'Solid — swims with the school.' },
-  rare: { name: 'Rare', score: 60, emoji: '🦑', color: '#ff5252', blurb: 'An uncommon answer. Nice pull.' },
-  deepcut: { name: 'Deep Cut', score: 85, emoji: '🏮', color: '#9d7bff', blurb: 'True obscurity. Few go this deep.' },
-  krillion: { name: 'One in a Krillion', score: 100, emoji: '🌟', color: '#ffd166', blurb: 'The designated gem. Trench floor.' },
-};
+// Tier keys are stored in the database and the puzzle bank; display names live in themes.
+export const TIER_KEYS = ['normie', 'midcurve', 'holder', 'degen', 'og', 'satoshi'];
+export const TIER_SCORES = { normie: 10, midcurve: 15, holder: 30, degen: 60, og: 85, satoshi: 100 };
 export const BANDS = [
-  { min: 0, max: 150, tier: 'plankton', name: 'Plankton', text: 'Plenty of ocean left down there.' },
-  { min: 151, max: 250, tier: 'schooler', name: 'Schooler', text: 'Swimming with the school.' },
-  { min: 251, max: 350, tier: 'rare', name: 'Rare', text: 'Below the thermocline. Nice.' },
-  { min: 351, max: 449, tier: 'deepcut', name: 'Deep cut', text: 'Seriously deep dive.' },
-  { min: 450, max: 700, tier: 'krillion', name: 'One in a krillion', text: 'Trench dweller. Absurd.' },
+  { min: 0, max: 150, tier: 'normie' },
+  { min: 151, max: 250, tier: 'holder' },
+  { min: 251, max: 350, tier: 'degen' },
+  { min: 351, max: 449, tier: 'og' },
+  { min: 450, max: 700, tier: 'satoshi' },
 ];
 export const ROUND_MS = 25000;
 export const PREVIEW_MS = 3000;
@@ -50,7 +45,7 @@ export function matchAnswer(input, answers) {
   if (candidates.length && (!candidates[1] || candidates[0].d < candidates[1].d || candidates[0].a.answer === candidates[1].a.answer)) return { ...candidates[0].a, correction: true };
   return null;
 }
-export function shareText(day, results) {
+export function shareText(day, results, theme, site) {
   const score = results.reduce((s, r) => s + r.score, 0);
-  return `OpenKrillion #${day} 🦐\n${score}/700 · ${score * 10}m\n${results.map(r => TIERS[r.tier]?.emoji || '⬛').join('')}\nhttps://openkrillion.com`;
+  return `${site.name} #${day} ${theme.copy.shareIcon}\n${score}/700 · ${score * 10}m\n${results.map(r => theme.tiers[r.tier]?.emoji || '⬛').join('')}\n${site.origin}`;
 }
