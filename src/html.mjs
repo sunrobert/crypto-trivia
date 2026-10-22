@@ -12,7 +12,7 @@ export function originalFooter() {
 }
 export function homePage(env={},themeId) {
   const theme=themeFor(themeId),copy=theme.copy,mascot=theme.sprites.buddies[0];
-  const letters=[...SITE.name.toUpperCase().replace(/\s+/g,'')].map((c,i)=>`<span style="--letter:${i}">${esc(c)}</span>`).join('');
+  let li=0;const letters=SITE.name.toUpperCase().trim().split(/\s+/).map(w=>`<span class="hero-line">${[...w].map(c=>`<span style="--letter:${li++}">${esc(c)}</span>`).join('')}</span>`).join(' ');
   const schema={ '@context':'https://schema.org','@type':'VideoGame',name:SITE.name,url:env.SITE_URL||SITE.origin,description:SITE.description,applicationCategory:'Game',gamePlatform:'Web browser',operatingSystem:'Any',inLanguage:'en',isAccessibleForFree:true,license:'https://opensource.org/license/mit',codeRepository:SITE.repository,offers:{'@type':'Offer',price:0,priceCurrency:'USD'},genre:['Trivia','Word game'] };
   return `<!doctype html><html lang="en" data-theme="${theme.id}"><head>${head(undefined,undefined,'/',env)}<script type="application/ld+json">${JSON.stringify(schema)}</script></head><body data-phase="intro" data-theme="${theme.id}"><main id="game" aria-label="${esc(SITE.name)} daily trivia game"><canvas id="ocean" aria-label="${esc(copy.canvasLabel)}"></canvas><div class="vignette" aria-hidden="true"></div><div class="danger-glow" aria-hidden="true"></div><div class="crt" aria-hidden="true"></div><div class="flash" aria-hidden="true"></div>
   <button id="menu-btn" class="square menu-btn" aria-label="Open menu" aria-haspopup="dialog">☰</button>
