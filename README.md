@@ -30,11 +30,11 @@ The real daily questions live in a separate **private** repo so nobody can read 
 
 ## Deploy (Vercel + Turso)
 
-Live at https://crypto-trivia.vercel.app. Pushing to `main` on GitHub redeploys automatically.
+Live at https://proof-of-dig.vercel.app. Pushing to `main` on GitHub redeploys automatically.
 
 First-time setup (what was done for this site, so it can be redone):
 
-1. `npx vercel login`, then `npx vercel link --project crypto-trivia`.
+1. `npx vercel login`, then `npx vercel link --project proof-of-dig`.
 2. Add the database: `npx vercel integration add tursocloud/database` (free plan). This sets `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` on the project and pulls them into `.env.local`.
 3. Create tables and load the private bank: `set -a; . ./.env.local; set +a; npm run db:migrate; LAUNCH_DATE=YYYY-MM-DD npm run seed -- ../crypto-trivia-bank/days`.
 4. Add `CRON_SECRET` (random, e.g. `openssl rand -hex 32`) and `LAUNCH_DATE` as Production env vars (`npx vercel env add …`). `SITE_URL` is optional; links fall back to the request's own address.
