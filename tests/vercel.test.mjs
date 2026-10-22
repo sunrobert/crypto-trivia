@@ -15,3 +15,10 @@ test('Vercel entry explains a missing database URL instead of crashing', () => {
 test('Vercel entry uses the HTTP-only libSQL client (no native module)', () => {
   assert.match(readFileSync('api/index.mjs', 'utf8'), /@libsql\/client\/web/);
 });
+
+test('vercel.json pins "no framework" so Vercel never runs the browser script as the server', () => {
+  const cfg = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  assert.ok('framework' in cfg && cfg.framework === null, 'framework must be explicitly null');
+  assert.equal(cfg.outputDirectory, 'public');
+  assert.deepEqual(cfg.rewrites, [{ source: '/(.*)', destination: '/api/index' }]);
+});
