@@ -39,7 +39,7 @@ export class Scene {
     if(['preview','answering','plunge'].includes(this.phase)){const card=document.getElementById('prompt-card');if(card)card.style.top=worldY(this.roundBase||0)+'px';}
     if(this.phase==='plunge')document.querySelectorAll('.tier-line').forEach(line=>line.style.top=worldY((this.fx?.startDepth||0)+Number(line.dataset.score)*10)+'px');
     const landing=document.getElementById('landing');if(landing&&this.phase==='landed')landing.style.top=(worldY(this.target)-124)+'px';
-    const target=this.phase==='intro'?this.theme.layout.intro(l,w,sea):this.phase==='done'?{x:l.left+l.width*.82,y:l.height*.16}:this.phase==='landed'&&this.fx?.tier==='satoshi'?{x:l.center,y:worldY(this.target)-80}:this.phase==='landed'?{x:l.left+l.width*.16,y:l.height*.28}:this.phase==='plunge'?{x:Math.min(l.center+95,w-l.rail-44),y:l.height/2-74}:{x:l.left+48,y:l.height-168};
+    const target=this.phase==='intro'?this.theme.layout.intro(l,w,sea):this.phase==='done'?(l.mobile?{x:w*.62,y:110}:{x:l.left+l.width*.82,y:l.height*.16}):this.phase==='landed'&&this.fx?.tier==='satoshi'?{x:l.center,y:worldY(this.target)-80}:this.phase==='landed'?{x:l.left+l.width*.16,y:l.mobile?l.height/2-226:l.height*.28}:this.phase==='plunge'?{x:Math.min(l.center+95,w-l.rail-44),y:l.height/2-74}:{x:l.left+48,y:l.height-168};
     const follow=1-Math.exp(-2.6*(this.dt||.016));this.mx=mix(this.mx*w,target.x,follow)/w;this.my=mix(this.my*h,target.y,follow)/h;const mascotSize=this.phase==='landed'&&this.fx?.tier==='satoshi'?(l.mobile?66:88):64;this.mascot.style.width=mascotSize+'px';this.mascot.style.height=mascotSize+'px';this.mascot.style.left=(this.mx*w-mascotSize/2)+'px';this.mascot.style.top=(this.my*h-mascotSize/2)+'px';this.mascot.style.transform='none';
   }
 }
