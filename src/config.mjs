@@ -2,7 +2,7 @@
 export const SITE = {
   name: 'Proof of Dig',
   origin: 'http://localhost:3051',
-  repository: 'https://github.com/sunrobert/crypto-trivia',
+  repository: 'https://github.com/sunrobert/proof-of-dig',
   description: 'Proof of Dig is a daily crypto trivia game for crypto Twitter. Seven prompts, 25 seconds each. Obvious answers barely score; rare correct answers dig deep.',
   title: 'Proof of Dig — daily crypto trivia where rare answers dig deeper',
   rounds: 7, previewSeconds: 3, answerSeconds: 25, maxScore: 700, metresPerPoint: 10,
