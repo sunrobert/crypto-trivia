@@ -28,7 +28,11 @@ function backdrop({ w, h, t, l, sea, worldY }) {
     const sky = c.createLinearGradient(0, sea - 620, 0, sea); sky.addColorStop(0, '#1e1538'); sky.addColorStop(.55, '#5b2a5e'); sky.addColorStop(1, '#f08a4b');
     c.fillStyle = sky; c.fillRect(0, 0, w, sea + 8);
     for (let i = 0; i < 40; i++) { const x = seed(i + 5) * w, y = sea - 620 + seed(i + 50) * 380; if (y < sea - 40) { c.fillStyle = `rgba(255,240,220,${.3 + .3 * Math.sin(t * 2 + i)})`; c.fillRect(x, y, 2, 2); } }
-    const sunR = l.mobile ? 26 : 60; c.fillStyle = '#ffcf6b'; c.fillRect(w * .78 - sunR, sea - sunR * 1.4, sunR * 2, sunR * 2);
+    // Setting sun: stepped pixel disc with a warm halo, sliced by the horizon.
+    const r = l.mobile ? 24 : 56, cx = w * .78, cy = sea - r * .55, px = l.mobile ? 4 : 8;
+    const halo = c.createRadialGradient(cx, cy, r * .6, cx, cy, r * 2.6); halo.addColorStop(0, 'rgba(255,190,100,.35)'); halo.addColorStop(1, 'rgba(255,190,100,0)'); c.fillStyle = halo; c.fillRect(cx - r * 3, cy - r * 3, r * 6, r * 6);
+    for (let y = -r; y < r; y += px) { const half = Math.floor(Math.sqrt(Math.max(0, r * r - (y + px / 2) ** 2)) / px) * px; c.fillStyle = y < -r * .35 ? '#ffe9a0' : y < r * .2 ? '#ffcf6b' : '#ffae5c'; c.fillRect(Math.round(cx - half), Math.round(cy + y), half * 2, px); }
+    c.fillStyle = 'rgba(91,42,94,.55)'; for (let k = 0; k < 3; k++) c.fillRect(cx - r, cy + r * (.1 + k * .22), r * 2, Math.max(2, px / 2));
     c.fillStyle = '#2a1830'; c.beginPath(); c.moveTo(0, sea);
     for (let x = 0; x <= w + 16; x += 16) c.lineTo(x, sea - 30 - Math.sin(x * .006) * 22 - Math.sin(x * .021) * 8); c.lineTo(w, sea); c.fill();
     headframe.call(this, w * .25, sea, Math.min(3.2, w / 300));
