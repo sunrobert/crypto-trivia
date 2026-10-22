@@ -25,7 +25,7 @@ async function staticFile(pathname) {
 createServer(async (req, res) => {
   const { pathname } = new URL(req.url, 'http://localhost');
   const file = ['GET', 'HEAD'].includes(req.method) ? await staticFile(pathname) : null;
-  if (file) { res.writeHead(200, { 'Content-Type': file.type }); return res.end(req.method === 'HEAD' ? undefined : file.body); }
+  if (file) { res.writeHead(200, { 'Content-Type': file.type, 'Cache-Control': 'no-store' }); return res.end(req.method === 'HEAD' ? undefined : file.body); }
   const chunks = []; for await (const c of req) chunks.push(c);
   const request = new Request(`http://localhost:${port}${req.url}`, { method: req.method, headers: req.headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : Buffer.concat(chunks) });
   const response = await handle(request, env);
