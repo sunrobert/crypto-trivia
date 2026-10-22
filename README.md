@@ -16,7 +16,7 @@ npm run dev
 
 Open http://localhost:3051. The local database is `.data/local.db` (ignored by git). Add `?theme=sea` to preview the fallback sea theme.
 
-Checks: `npm test`, plus `node scripts/browser-audit.mjs` and `node scripts/mobile-flow-audit.mjs` against a running dev server.
+Checks: `npm test`, plus `node scripts/browser-audit.mjs <url>` and `node scripts/mobile-flow-audit.mjs <url>`. The audits play the built-in sample questions, so point them at a dev server with an empty database, e.g. `PORT=3052 TURSO_DATABASE_URL=file:/tmp/audit.db npm run dev`.
 
 ## Questions: public code, private bank
 
