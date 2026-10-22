@@ -15,6 +15,7 @@ function headers(response, additional = {}) {
   return new Response(response.body, { status: response.status, headers: h });
 }
 const puzzleFor = (env, date) => lookup(env.DB, date, env.LAUNCH_DATE || SITE.launchDate);
+const secure = (request, url) => url.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
 const dailyDone = async (env, player, date) => !!(await env.DB.prepare("SELECT 1 AS ok FROM runs WHERE player=? AND date=? AND mode='daily' AND completed=1").bind(player || '', date).first());
 function promptDTO(puzzle) {
   return { date: puzzle.date, dayNumber: puzzle.dayNumber, sample: !!puzzle.sample, source: puzzle.source, resetsAt: resetAt(puzzle.date), prompts: puzzle.prompts.map(({ id, text }) => ({ id, text })) };
@@ -60,7 +61,8 @@ async function api(request, env, url) {
     return json(await runRetier(env.DB, date));
   }
   if (request.method !== 'POST') return fail('Unknown endpoint.', 404);
-  if (request.headers.get('Origin') && request.headers.get('Origin') !== url.origin) return fail('Cross-origin requests are not accepted.', 403);
+  const origin = request.headers.get('Origin');
+  if (origin && (() => { try { return new URL(origin).host !== url.host; } catch { return true; } })()) return fail('Cross-origin requests are not accepted.', 403);
   if (Number(request.headers.get('Content-Length') || 0) > 8000) return fail('Request is too large.', 413);
   if (!await limit(env, request, player)) return fail('Too many requests. Take a breath and try again.', 429);
   let data; try { const raw = await request.text(); if (raw.length > 8000) return fail('Request is too large.', 413); data = JSON.parse(raw); } catch { return fail('Invalid request.'); }
@@ -75,7 +77,7 @@ async function api(request, env, url) {
       await env.DB.prepare('INSERT OR IGNORE INTO runs(id,player,date,mode,round_start,created_at) VALUES(?,?,?,?,?,?)').bind(rid, id, date, mode, Date.now() + PREVIEW_MS, Date.now()).run();
       run = mode === 'daily' ? await env.DB.prepare("SELECT * FROM runs WHERE player=? AND date=? AND mode='daily'").bind(id,date).first() : await ownRun(env,rid,id);
     }
-    return json(await state(env, run), 200, { 'Set-Cookie': `ct_player=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000${url.protocol === 'https:' ? '; Secure' : ''}` });
+    return json(await state(env, run), 200, { 'Set-Cookie': `ct_player=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000${secure(request, url) ? '; Secure' : ''}` });
   }
   if (path === '/api/pause') {
     const run = await ownRun(env,data.runId,player);
@@ -135,6 +137,7 @@ async function api(request, env, url) {
 }
 // Single entry point for Vercel and the local dev server. Static files are served before this runs.
 export async function handle(request, env) {
+  env = { ...env, SITE_URL: env.SITE_URL || new URL(request.url).origin };
     const url = new URL(request.url);
     try {
       if (url.pathname.startsWith('/api/')) return headers(await api(request,env,url));

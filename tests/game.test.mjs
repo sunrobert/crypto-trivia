@@ -97,7 +97,7 @@ test('practice locked until daily done',async()=>{
 });
 test('no answers leak before completion',async()=>{
   const s=await service();const today=etDate();s.env.LAUNCH_DATE=today;
-  const days=[makeDay(1,'leak'),makeDay(2,'leak')];await seedBank(s.env.DB,days,{launchDate:today,today});
+  const days=[makeDay(1,'leak'),makeDay(2,'leak')];await seedBank(s.env.DB,days,{launchDate:today});
   for(const path of ['/api/today','/api/today?date='+addDays(today,1)]){
     const r=await s.call(path);const text=JSON.stringify(r.body);
     walk(r.body,k=>assert.notEqual(k,'answers'));
@@ -115,7 +115,7 @@ test('no answers leak before completion',async()=>{
 test('run started before midnight scores against its own date',async(t)=>{
   const s=await service();const real=Date.now;t.after(()=>{Date.now=real;});
   const D='2026-12-10',launch=D;s.env.LAUNCH_DATE=launch;
-  await seedBank(s.env.DB,[makeDay(1,'mid'),makeDay(2,'mid')],{launchDate:launch,today:'2000-01-01'});
+  await seedBank(s.env.DB,[makeDay(1,'mid'),makeDay(2,'mid')],{launchDate:launch});
   Date.now=()=>Date.parse('2026-12-11T04:59:50Z');assert.equal(etDate(),D);
   const{body:g}=await s.call('/api/start',{});assert.equal(g.date,D);
   Date.now=()=>Date.parse('2026-12-11T05:00:05Z');assert.equal(etDate(),'2026-12-11');
@@ -123,19 +123,41 @@ test('run started before midnight scores against its own date',async(t)=>{
   assert.equal(r.body.result.score,100);assert.equal(r.body.result.promptText,'mid day 1 prompt 0');
   s.env.DB.close();
 });
-test('bank exhausted reruns day 1 with its re-tiered answers',async()=>{
+test('bank exhausted reruns day 1 with its re-tiered answers; the snapshot sticks',async()=>{
   const { puzzleFor } = await import('../src/puzzles.mjs');
-  const s=await service();const today=etDate(),launch=addDays(today,-2);s.env.LAUNCH_DATE=launch;
-  await seedBank(s.env.DB,[makeDay(1,'ex'),makeDay(2,'ex')],{launchDate:launch,today:launch});
-  const row=await s.env.DB.prepare('SELECT content FROM puzzles WHERE date=?').bind(launch).first(),c=JSON.parse(row.content);
-  c.prompts[0].answers[1].tier='og';await s.env.DB.prepare('UPDATE puzzles SET content=? WHERE date=?').bind(JSON.stringify(c),launch).run();
-  const p=await puzzleFor(s.env.DB,today,launch);
+  const { mkdtempSync } = await import('node:fs');const { tmpdir } = await import('node:os');
+  const url='file:'+mkdtempSync(tmpdir()+'/ct-')+'/t.db';
+  const a=createDb({url});await migrate(a);const today=etDate(),launch=addDays(today,-2);
+  await seedBank(a,[makeDay(1,'ex'),makeDay(2,'ex')],{launchDate:launch});
+  const bankDay=async tier=>{const c=JSON.parse((await a.prepare('SELECT content FROM bank WHERE day=1').first()).content);c.prompts[0].answers[1].tier=tier;await a.prepare('UPDATE bank SET content=? WHERE day=1').bind(JSON.stringify(c)).run();};
+  await bankDay('og');
+  const p=await puzzleFor(a,today,launch);
   assert.deepEqual(p.prompts.map(x=>x.id),makeDay(1,'ex').prompts.map(x=>x.id));
-  assert.equal(p.dayNumber,3);assert.equal(p.prompts[0].answers[1].tier,'og');assert.equal(p.rerunOf,launch);
-  const snap=await s.env.DB.prepare('SELECT source FROM puzzles WHERE date=?').bind(today).first();assert.equal(snap.source,'rerun');
-  c.prompts[0].answers[1].tier='holder';await s.env.DB.prepare('UPDATE puzzles SET content=? WHERE date=?').bind(JSON.stringify(c),launch).run();
-  assert.equal((await puzzleFor(s.env.DB,today,launch)).prompts[0].answers[1].tier,'og');
-  const api=await s.call('/api/today');assert.equal(api.body.dayNumber,3);assert.equal(api.body.sample,false);
+  assert.equal(p.dayNumber,3);assert.equal(p.prompts[0].answers[1].tier,'og');assert.equal(p.rerunOf,1);
+  assert.equal((await a.prepare('SELECT source FROM puzzles WHERE date=?').bind(today).first()).source,'rerun');
+  await bankDay('holder');
+  const b=createDb({url});  // fresh handle: no in-memory cache, so this reads the stored snapshot
+  assert.equal((await puzzleFor(b,today,launch)).prompts[0].answers[1].tier,'og');
+  a.close();b.close();
+});
+test('server uses the launch date stored by the seed',async()=>{
+  const s=await service();const today=etDate();
+  await seedBank(s.env.DB,[makeDay(1,'ld'),makeDay(2,'ld'),makeDay(3,'ld')],{launchDate:addDays(today,-1)});
+  const r=await s.call('/api/today');assert.equal(r.body.dayNumber,2);assert.equal(r.body.prompts[0].id,'ld2p0');
+  s.env.DB.close();
+});
+test('origin check compares hosts and the cookie is Secure behind an https proxy',async()=>{
+  const s=await service();
+  const r=await handle(new Request('http://game.test/api/start',{method:'POST',body:'{}',headers:{'Content-Type':'application/json',Origin:'https://game.test','x-forwarded-proto':'https'}}),s.env);
+  assert.equal(r.status,200);assert.match(r.headers.get('Set-Cookie'),/; Secure/);
+  const evil=await handle(new Request('http://game.test/api/start',{method:'POST',body:'{}',headers:{'Content-Type':'application/json',Origin:'https://evil.test'}}),s.env);
+  assert.equal(evil.status,403);
+  s.env.DB.close();
+});
+test('without SITE_URL, links use the request origin instead of localhost',async()=>{
+  const s=await service();const env={...s.env,SITE_URL:''};
+  const html=await (await handle(new Request('https://play.example/'),env)).text();
+  assert.ok(html.includes('https://play.example/assets/og.png'));assert.ok(!html.includes('localhost'));
   s.env.DB.close();
 });
 test('fresh database serves the sample',async()=>{

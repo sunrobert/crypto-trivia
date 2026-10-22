@@ -4,7 +4,6 @@ import { TIER_KEYS, normalize } from '../public/rules.mjs';
 export const CATEGORIES = ['history', 'chains', 'defi', 'memecoins', 'collapses', 'people', 'ct-lore', 'nfts', 'exchanges', 'tech', 'satoshi', 'culture'];
 
 export const daysBetween = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 86400000);
-const addDays = (date, n) => { const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
 
 export function validateDay(day) {
   const where = `day ${day?.day ?? '?'}`;
@@ -18,8 +17,10 @@ export function validateDay(day) {
     if (!p.text || typeof p.text !== 'string' || !p.text.trim()) throw new Error(`${at}: empty text`);
     if (!CATEGORIES.includes(p.category)) throw new Error(`${at}: unknown category "${p.category}"`);
     if (!Array.isArray(p.answers) || p.answers.length < 8) throw new Error(`${at}: needs at least 8 answers`);
-    const keys = new Map();
+    const keys = new Map(), names = new Set();
     for (const a of p.answers) {
+      if (names.has(a.answer)) throw new Error(`${at}: "${a.answer}" is listed twice`);
+      names.add(a.answer);
       if (!TIER_KEYS.includes(a.tier)) throw new Error(`${at}: unknown tier "${a.tier}" on "${a.answer}"`);
       for (const word of [a.answer, ...(a.aliases || [])]) {
         const key = normalize(word);
@@ -50,17 +51,14 @@ export function validateBank(days) {
   return errors;
 }
 
-// Upserts bank days as dated puzzle rows. A past day that already has a row is left alone unless
-// forced, so a re-seed never rewrites a puzzle people already played (or its re-tiered answers).
-export async function seedBank(db, days, { launchDate, today, force = false }) {
-  let written = 0, skipped = 0;
+// Writes bank days by day number and records the launch date. Dates that were already
+// served keep their frozen snapshot in `puzzles`, so a reseed never changes a puzzle mid-day.
+export async function seedBank(db, days, { launchDate }) {
   for (const d of days) {
     validateDay(d);
-    const date = addDays(launchDate, d.day - 1);
-    if (date < today && !force && await db.prepare('SELECT 1 AS ok FROM puzzles WHERE date=?').bind(date).first()) { skipped++; continue; }
-    const content = { date, dayNumber: d.day, source: 'bank', prompts: d.prompts.map(p => ({ ...p, answers: p.answers.map(a => ({ ...a, startTier: a.startTier || a.tier })) })) };
-    await db.prepare("INSERT INTO puzzles(date,day_number,source,content) VALUES(?,?,'bank',?) ON CONFLICT(date) DO UPDATE SET day_number=excluded.day_number, source='bank', content=excluded.content, updated_at=CURRENT_TIMESTAMP").bind(date, d.day, JSON.stringify(content)).run();
-    written++;
+    const content = { dayNumber: d.day, source: 'bank', prompts: d.prompts.map(p => ({ ...p, answers: p.answers.map(a => ({ ...a, startTier: a.startTier || a.tier })) })) };
+    await db.prepare('INSERT INTO bank(day,content) VALUES(?,?) ON CONFLICT(day) DO UPDATE SET content=excluded.content, updated_at=CURRENT_TIMESTAMP').bind(d.day, JSON.stringify(content)).run();
   }
-  return { written, skipped };
+  await db.prepare("INSERT INTO meta(key,value) VALUES('launch_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(launchDate).run();
+  return { written: days.length };
 }

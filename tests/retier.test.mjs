@@ -28,7 +28,9 @@ test('retierPrompt applies share cut-offs, the Midcurve rule and guards', () => 
 async function setup() {
   const db = createDb({ url: ':memory:' }); await migrate(db);
   const today = etDate(), yesterday = addDays(today, -1);
-  await seedBank(db, [makeDay(1, 'r'), makeDay(2, 'r')], { launchDate: yesterday, today: yesterday });
+  await seedBank(db, [makeDay(1, 'r'), makeDay(2, 'r')], { launchDate: yesterday });
+  const { puzzleFor } = await import('../src/puzzles.mjs');
+  await puzzleFor(db, yesterday, yesterday); await puzzleFor(db, today, yesterday);
   for (let i = 0; i < 60; i++) {
     const id = `run-${i}`;
     await db.prepare("INSERT INTO runs(id,player,date,mode,next_round,completed,created_at) VALUES(?,?,?,'daily',7,1,1)").bind(id, `p${i}`, yesterday).run();
@@ -38,14 +40,25 @@ async function setup() {
   return { db, today, yesterday };
 }
 
-test('runRetier updates past bank rows from daily answers and is idempotent', async () => {
+test('runRetier updates the bank from past daily answers, leaves served snapshots alone, is idempotent', async () => {
   const { db, today, yesterday } = await setup();
-  const before = (await db.prepare('SELECT content FROM puzzles WHERE date=?').bind(today).first()).content;
-  assert.deepEqual(await runRetier(db, today), { prompts: 7, updated: 1 });
-  const y = JSON.parse((await db.prepare('SELECT content FROM puzzles WHERE date=?').bind(yesterday).first()).content);
-  assert.equal(y.prompts[0].answers.find(a => a.answer === 'r1p0x5').tier, 'midcurve');
-  assert.equal((await db.prepare('SELECT content FROM puzzles WHERE date=?').bind(today).first()).content, before);
-  assert.deepEqual(await runRetier(db, today), { prompts: 7, updated: 0 });
+  const snapshot = (await db.prepare('SELECT content FROM puzzles WHERE date=?').bind(yesterday).first()).content;
+  assert.deepEqual(await runRetier(db, today), { prompts: 14, updated: 1 });
+  const bank = JSON.parse((await db.prepare('SELECT content FROM bank WHERE day=1').first()).content);
+  assert.equal(bank.prompts[0].answers.find(a => a.answer === 'r1p0x5').tier, 'midcurve');
+  assert.equal((await db.prepare('SELECT content FROM puzzles WHERE date=?').bind(yesterday).first()).content, snapshot);
+  assert.deepEqual(await runRetier(db, today), { prompts: 14, updated: 0 });
+  db.close();
+});
+
+test("today's answers are not counted until the day is over", async () => {
+  const { db, today } = await setup();
+  await db.prepare('DELETE FROM answers').run(); await db.prepare('DELETE FROM runs').run();
+  for (let i = 0; i < 60; i++) {
+    await db.prepare("INSERT INTO runs(id,player,date,mode,next_round,completed,created_at) VALUES(?,?,?,'daily',7,1,1)").bind('t' + i, 'q' + i, today).run();
+    await db.prepare('INSERT INTO answers(run_id,round,answer,tier,score,created_at) VALUES(?,0,?,?,30,1)').bind('t' + i, 'r2p0x3', 'holder').run();
+  }
+  assert.deepEqual(await runRetier(db, today), { prompts: 14, updated: 0 });
   db.close();
 });
 

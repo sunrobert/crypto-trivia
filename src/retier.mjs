@@ -15,10 +15,13 @@ export function retierPrompt(answers, counts, respondents) {
   });
 }
 
+// Counts daily answers per prompt id across every served date before `today`, then
+// re-ranks the bank. Served snapshots stay as they were, so past answer sheets match scores.
 export async function runRetier(db, today) {
-  const rows = (await db.prepare("SELECT date, source, content FROM puzzles WHERE date < ? AND source IN ('bank','rerun')").bind(today).all()).results.map(r => ({ ...r, puzzle: JSON.parse(r.content) }));
+  const served = (await db.prepare("SELECT date, content FROM puzzles WHERE date < ? AND source IN ('bank','rerun')").bind(today).all()).results;
   const counts = new Map(), respondents = new Map();
-  for (const { date, puzzle } of rows) {
+  for (const { date, content } of served) {
+    const puzzle = JSON.parse(content);
     const played = (await db.prepare("SELECT a.round, a.answer FROM answers a JOIN runs r ON r.id = a.run_id WHERE r.date = ? AND r.mode = 'daily'").bind(date).all()).results;
     for (const { round, answer } of played) {
       const id = puzzle.prompts[round]?.id; if (!id) continue;
@@ -27,11 +30,11 @@ export async function runRetier(db, today) {
     }
   }
   let prompts = 0, updated = 0;
-  for (const { date, source, puzzle, content } of rows) {
-    if (source !== 'bank') continue;
-    const next = { ...puzzle, prompts: puzzle.prompts.map(p => { prompts++; return { ...p, answers: retierPrompt(p.answers, counts.get(p.id) || {}, respondents.get(p.id) || 0) }; }) };
+  for (const { day, content } of (await db.prepare('SELECT day, content FROM bank ORDER BY day').all()).results) {
+    const bankDay = JSON.parse(content);
+    const next = { ...bankDay, prompts: bankDay.prompts.map(p => { prompts++; return { ...p, answers: retierPrompt(p.answers, counts.get(p.id) || {}, respondents.get(p.id) || 0) }; }) };
     const json = JSON.stringify(next);
-    if (json !== content) { await db.prepare('UPDATE puzzles SET content = ?, updated_at = CURRENT_TIMESTAMP WHERE date = ?').bind(json, date).run(); updated++; }
+    if (json !== content) { await db.prepare('UPDATE bank SET content = ?, updated_at = CURRENT_TIMESTAMP WHERE day = ?').bind(json, day).run(); updated++; }
   }
   return { prompts, updated };
 }

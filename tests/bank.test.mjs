@@ -45,20 +45,48 @@ test('daysBetween counts calendar days', () => {
   assert.equal(daysBetween('2026-12-05', '2026-12-01'), -4);
 });
 
-test('seedBank writes dated rows with startTier and leaves past days alone unless forced', async () => {
+test('seedBank stores bank days by number, records the launch date, sets startTier', async () => {
   const db = createDb({ url: ':memory:' }); await migrate(db);
-  const today = etDate(), launch = addDays(today, -1);
-  const days = [makeDay(1, 's'), makeDay(2, 's')];
-  assert.deepEqual(await seedBank(db, days, { launchDate: launch, today }), { written: 2, skipped: 0 });
-  const row = await db.prepare('SELECT * FROM puzzles WHERE date=?').bind(today).first();
-  assert.equal(row.day_number, 2); assert.equal(row.source, 'bank');
+  assert.deepEqual(await seedBank(db, [makeDay(1, 's'), makeDay(2, 's')], { launchDate: '2026-12-01' }), { written: 2 });
+  const row = await db.prepare('SELECT * FROM bank WHERE day=2').first();
   const content = JSON.parse(row.content);
+  assert.equal(content.prompts[0].id, 's2p0');
   assert.ok(content.prompts[0].answers.every(a => a.startTier === a.tier));
-  const edited = structuredClone(days); edited[0].prompts[0].text = 'changed'; edited[1].prompts[0].text = 'changed';
-  assert.deepEqual(await seedBank(db, edited, { launchDate: launch, today }), { written: 1, skipped: 1 });
-  assert.equal(JSON.parse((await db.prepare('SELECT content FROM puzzles WHERE date=?').bind(launch).first()).content).prompts[0].text, 's day 1 prompt 0');
-  assert.deepEqual(await seedBank(db, edited, { launchDate: launch, today, force: true }), { written: 2, skipped: 0 });
+  assert.equal((await db.prepare("SELECT value FROM meta WHERE key='launch_date'").first()).value, '2026-12-01');
   db.close();
+});
+
+test('seeding after launch keeps every bank day and maps dates by day number', async () => {
+  const { puzzleFor } = await import('../src/puzzles.mjs');
+  const db = createDb({ url: ':memory:' }); await migrate(db);
+  const today = etDate(), launch = addDays(today, -3);
+  for (let i = 0; i < 3; i++) assert.equal((await puzzleFor(db, addDays(launch, i), launch)).sample, true);
+  assert.deepEqual(await seedBank(db, [1, 2, 3, 4, 5].map(n => makeDay(n, 'late')), { launchDate: launch }), { written: 5 });
+  assert.equal((await db.prepare('SELECT COUNT(*) AS n FROM bank').first()).n, 5);
+  assert.equal((await puzzleFor(db, today, launch)).prompts[0].id, 'late4p0');
+  assert.equal((await puzzleFor(db, addDays(today, 1), launch)).prompts[0].id, 'late5p0');
+  const rerun = await puzzleFor(db, addDays(today, 2), launch);
+  assert.equal(rerun.prompts[0].id, 'late1p0'); assert.equal(rerun.dayNumber, 6);
+  db.close();
+});
+
+test('a reseed never changes a date that was already served', async () => {
+  const { puzzleFor } = await import('../src/puzzles.mjs');
+  const db = createDb({ url: ':memory:' }); await migrate(db);
+  const today = etDate();
+  await seedBank(db, [makeDay(1, 'r')], { launchDate: today });
+  const served = await puzzleFor(db, today, today);
+  const edited = makeDay(1, 'r'); edited.prompts[0].text = 'edited later';
+  await seedBank(db, [edited], { launchDate: today });
+  const row = JSON.parse((await db.prepare('SELECT content FROM puzzles WHERE date=?').bind(today).first()).content);
+  assert.equal(row.prompts[0].text, served.prompts[0].text);
+  assert.equal(JSON.parse((await db.prepare('SELECT content FROM bank WHERE day=1').first()).content).prompts[0].text, 'edited later');
+  db.close();
+});
+
+test('validateDay rejects the same canonical answer listed twice', () => {
+  const d = makeDay(1, 'dup'); d.prompts[0].answers[2] = { ...d.prompts[0].answers[1], tier: 'og' };
+  assert.throws(() => validateDay(d), /dup1p0.*twice/);
 });
 
 test('validateBank and the CLI reject gaps and repeated prompt text', () => {
