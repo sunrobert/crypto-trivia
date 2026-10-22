@@ -1,4 +1,4 @@
-# Crypto Trivia (working name)
+# Proof of Dig
 
 A daily rare-answer crypto trivia game for crypto Twitter. Seven prompts, 25 seconds each. Obvious answers barely score; obscure correct answers dig deep.
 

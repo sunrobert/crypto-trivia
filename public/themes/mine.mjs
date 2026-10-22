@@ -101,7 +101,7 @@ export default {
     satoshi: { name: 'Satoshi-tier', text: 'Struck bedrock gold.' },
   },
   copy: {
-    tagline: 'THE DAILY DIG',
+    tagline: 'DAILY CRYPTO TRIVIA',
     subline: '7 prompts · 25 seconds each · rarer answers dig deeper',
     canvasLabel: 'Animated pixel mine shaft, depth increases downward',
     startLabel: 'SURFACE',

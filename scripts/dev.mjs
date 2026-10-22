@@ -31,4 +31,4 @@ createServer(async (req, res) => {
   const response = await handle(request, env);
   const headers = {}; response.headers.forEach((v, k) => { headers[k] = v; });
   res.writeHead(response.status, headers); res.end(Buffer.from(await response.arrayBuffer()));
-}).listen(port, () => console.log(`Crypto Trivia running at http://localhost:${port}`));
+}).listen(port, () => console.log(`Proof of Dig running at http://localhost:${port}`));
