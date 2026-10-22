@@ -18,8 +18,14 @@ function strata(c){const g=c.createLinearGradient(0,0,0,688);g.addColorStop(0,'#
  for(let i=0;i<70;i++){const x=n(i+90)*384,y=n(i+120)*688,k=n(i+7);c.fillStyle=k>.86?'#e07a2e':k>.72?'#0b0a0d':k>.66?'#3fbf9a':'#4a4450';c.fillRect(step(x),step(y),k>.66?4:2,k>.66?4:2)}}
 function cavern(c){const g=c.createLinearGradient(0,0,0,688);g.addColorStop(0,'#160f22');g.addColorStop(1,'#08060e');c.fillStyle=g;c.fillRect(0,0,384,688);
  grain(c,21,'#231a33',.05);walls(c,23,'#05040a','#2a1f3d');
- for(let i=0;i<9;i++){const x=n(i+300)>.5?20+n(i)*50:314+n(i)*50,y=30+n(i+40)*620,color=n(i+2)>.5?'#47ced9':'#c46bff';for(let j=0;j<4;j++){const h=14+n(i*5+j)*26,xx=x+j*7-10;poly(c,[[xx,y],[xx+4,y-h],[xx+8,y]],color+'cc');c.fillStyle='#ffffff55';c.fillRect(step(xx+3),step(y-h+4),2,4)}}
- for(let v=0;v<5;v++){const y=60+v*130+n(v)*40;c.strokeStyle='#ffd84a';c.lineWidth=2;c.beginPath();let x=n(v+8)>.5?0:384;c.moveTo(x,y);for(let j=1;j<9;j++){x+=(x<192?1:-1)*(10+n(v*9+j)*12);c.lineTo(x,y+(n(v*3+j)-.5)*30)}c.stroke();c.fillStyle='#fff3a6';for(let j=0;j<4;j++)c.fillRect(step(20+n(v*4+j)*344),step(y+(n(j+v)-.5)*24),2,2)}}
+ // Small crystal clusters near the walls, with a soft glow.
+ for(let i=0;i<10;i++){const left=n(i+300)>.5,x=left?40+n(i)*30:314-n(i)*30,y=40+n(i+40)*600,color=n(i+2)>.5?'71,206,217':'196,107,255';
+  const glow=c.createRadialGradient(x+4,y-4,1,x+4,y-4,22);glow.addColorStop(0,`rgba(${color},.22)`);glow.addColorStop(1,`rgba(${color},0)`);c.fillStyle=glow;c.fillRect(x-20,y-28,48,48);
+  for(let j=0;j<3;j++){const h=6+n(i*5+j)*8,xx=x+j*4-2;poly(c,[[xx,y],[xx+2,y-h],[xx+4,y]],`rgba(${color},.75)`);c.fillStyle='#ffffff66';c.fillRect(step(xx+2),step(y-h+2),1,2)}}
+ // Thin gold seams with nugget flecks, hugging the shaft walls.
+ for(let v=0;v<7;v++){const left=v%2===0,y=50+v*88+n(v)*40;let x=left?52+n(v+3)*14:332-n(v+3)*14;c.strokeStyle='rgba(255,216,74,.45)';c.lineWidth=1;c.beginPath();c.moveTo(x,y);
+  const pts=[];for(let j=1;j<6;j++){x+=(left?1:-1)*(4+n(v*9+j)*6);const yy=y+j*3+(n(v*3+j)-.5)*6;c.lineTo(x,yy);pts.push([x,yy])}c.stroke();
+  c.fillStyle='#ffd84a';for(const[px,py]of pts)if(n(px+py)>.45)c.fillRect(step(px),step(py)-1,2,2);c.fillStyle='#fff3a6';const[hx,hy]=pts[2];c.fillRect(step(hx),step(hy)-1,1,1)}}
 export class Minescape{
  constructor(){this.layers=[topsoil,strata,cavern].map(paint=>{const canvas=document.createElement('canvas');canvas.width=384;canvas.height=688;paint(canvas.getContext('2d'));return canvas})}
  draw(ctx,w,h,worldY){for(const [index,start,end,alpha]of[[0,0,470,.95],[1,480,2620,.9],[2,2950,7060,.9]]){
