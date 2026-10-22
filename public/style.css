@@ -212,3 +212,4 @@ body[data-phase="done"] .mascot{z-index:15}
 .result-row{display:flex;gap:8px;margin:6px 0 14px;align-items:center}.result-row img,.result-row .miss-icon{width:34px;height:34px;image-rendering:pixelated;display:grid;place-items:center;font-size:22px}
 .hero-word>.hero-line{display:inline-block;white-space:nowrap;animation:none}.hero-line>span{display:inline-block;animation:letter-float 3.2s ease-in-out infinite;animation-delay:calc(var(--letter)*.18s)}.low-power .hero-line>span{animation-play-state:paused}@media(max-width:699px){.hero-word{line-height:.95}.hero-word>.hero-line{display:block}}
 .subline,.prompt-card h2,.landing p{text-wrap:balance}
+.mascot{transition:opacity .25s}@media(max-width:699px){body.results-scrolled[data-phase="done"] .mascot{opacity:0;pointer-events:none}}
