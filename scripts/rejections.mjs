@@ -1,9 +1,12 @@
 // Usage: node scripts/rejections.mjs [--since YYYY-MM-DD]
 // Top rejected guesses per prompt, to find correct answers missing from the bank.
+import { mkdir } from 'node:fs/promises';
 import { createDb } from '../src/db.mjs';
 import { normalize } from '../public/rules.mjs';
 const i = process.argv.indexOf('--since'), since = i > 0 ? process.argv[i + 1] : '0000-00-00';
-const db = createDb({ url: process.env.TURSO_DATABASE_URL || 'file:.data/local.db', authToken: process.env.TURSO_AUTH_TOKEN });
+const url = process.env.TURSO_DATABASE_URL || 'file:.data/local.db';
+if (url === 'file:.data/local.db') await mkdir('.data', { recursive: true });
+const db = createDb({ url, authToken: process.env.TURSO_AUTH_TOKEN });
 const rows = (await db.prepare('SELECT prompt_id, raw FROM rejections WHERE date >= ?').bind(since).all()).results;
 const byPrompt = new Map();
 for (const r of rows) { const m = byPrompt.get(r.prompt_id) || new Map(), k = normalize(r.raw); const e = m.get(k) || { raw: r.raw, n: 0 }; e.n++; m.set(k, e); byPrompt.set(r.prompt_id, m); }
