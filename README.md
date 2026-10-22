@@ -44,7 +44,7 @@ A perfect day is **700 points** (7,000 m deep). Tiers aren't fixed forever: ever
 
 ## What's inside
 
-- **630 hand-written prompts** (90 days) with **20,000+ accepted answers**, from history and DeFi to memecoins, rugs and CT lore
+- **630 hand-written prompts** (90 days) with **nearly 30,000 accepted answers**, from history and DeFi to memecoins, rugs and CT lore
 - **Share card** made for screenshots: your score, depth, and a row of tier icons for the day
 - **Logbook and streaks** saved in your browser (no account, no wallet, no sign-up)
 - **Practice mode** once you've finished the daily
