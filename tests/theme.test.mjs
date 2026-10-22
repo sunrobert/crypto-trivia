@@ -18,6 +18,7 @@ test('every theme has the same complete shape', () => {
     for (const part of ['copy', 'palette', 'sprites', 'paint']) assert.deepEqual(keys(t[part]), keys(base[part]), `${id}.${part}`);
     for (const [k, v] of Object.entries(t.copy)) assert.ok(typeof v === 'string' && v.length, `${id}.copy.${k}`);
     assert.ok(Array.isArray(t.landmarks));
+    assert.equal(typeof t.layout?.intro, 'function', `${id}.layout.intro`);
   }
 });
 

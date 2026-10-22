@@ -127,6 +127,7 @@ export default {
   },
   palette: { ink: '#050a14', ruler: '#7d93b8', marker: '#ff5d8f', gold: '#ffd166', burst: '#4de3ff' },
   landmarks: [[60,'light begins to fade','L'],[200,'most sunlight stops here','R'],[332,'deepest scuba dive ever — 332m','R'],[385,'sperm whales hunt below here','L'],[535,'emperor penguins dive this deep','R'],[660,'pressure: 67x the surface','L'],[800,'siphonophore drift zone','R'],[1040,'THE MIDNIGHT ZONE','L'],[1240,'anglerfish territory','R'],[1550,'sperm whales duel giant squid here','L'],[1850,'giant squid territory','R'],[2150,'colossal squid eyes: football-sized','L'],[2500,'the water is 2°C and utterly black','R'],[3000,'THE ABYSSAL ZONE','L'],[3800,'the Titanic rests here — 3,800m','R'],[4400,'cusk eels patrol the plain','L'],[4900,'the abyssal plain stretches out','R'],[5500,'deeper than most submarines survive','L'],[6000,'THE HADAL ZONE','R'],[6500,'named for Hades. fitting.','L'],[7000,'the trench floor — a perfect dive ends here','R']],
+  layout: { intro: (l, w, sea) => ({ x: l.left + l.width * .72, y: sea + 105 }) },
   Scenery: Seascape,
   paint: { backdrop, effect, foreground, typeParticle, particle },
   sounds: {},
