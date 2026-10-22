@@ -3,14 +3,14 @@ const mix=(a,b,t)=>a+(b-a)*t;
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
 export class Scene {
   constructor(canvas,mascot,theme){
-    this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.mascot=mascot;this.theme=theme;
+    this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});this.labels=document.getElementById('labels');this.lctx=this.labels?.getContext('2d');this.mascot=mascot;this.theme=theme;
     this.scenery=new theme.Scenery();this.phase='intro';this.depth=0;this.target=0;this.cameraDepth=-45;this.cameraTarget=-45;this.active=0;this.targetActive=0;this.time=0;this.particles=[];this.fx=null;
     this.lowPower=false;this.reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;this.last=0;this.mx=.72;this.my=.66;
     this.sprites={};for(const name of theme.sprites.scene){const img=new Image();img.src='/assets/'+name+'.svg';this.sprites[name]=img;}
     this.resize();this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(canvas);requestAnimationFrame(t=>this.tick(t));
   }
   layout(){const mobile=this.w<700,rail=this.w>=1200?180:0,bottom=mobile?50:90;return{mobile,rail,bottom,height:this.h-bottom,left:rail,width:this.w-rail*2,center:this.w/2-24};}
-  resize(){const previousHeight=this.h,previousWidth=this.w;this.w=this.canvas.clientWidth;this.h=this.canvas.clientHeight;this.canvas.width=Math.ceil(this.w/2);this.canvas.height=Math.ceil(this.h/2);this.ctx.setTransform(.5,0,0,.5,0,0);this.ctx.imageSmoothingEnabled=false;
+  resize(){const previousHeight=this.h,previousWidth=this.w;this.w=this.canvas.clientWidth;this.h=this.canvas.clientHeight;this.canvas.width=Math.ceil(this.w/2);this.canvas.height=Math.ceil(this.h/2);this.ctx.setTransform(.5,0,0,.5,0,0);this.ctx.imageSmoothingEnabled=false;if(this.labels){this.dpr=Math.min(2,window.devicePixelRatio||1);this.labels.width=Math.ceil(this.w*this.dpr);this.labels.height=Math.ceil(this.h*this.dpr);}
     if(previousHeight&&(previousHeight!==this.h||previousWidth!==this.w)&&['preview','answering'].includes(this.phase)){const l=this.layout(),cardHeight=document.getElementById('prompt-card')?.offsetHeight||180,dockTop=l.height-80;this.roundAnchor=Math.max(8,Math.min(l.mobile?175:210,(dockTop-cardHeight)/2));this.cameraDepth=this.cameraTarget=(this.roundBase||0)+(l.height/2-this.roundAnchor)/2;this.cameraJob=null;}
     this.draw();}
   moveCamera(to,duration=2200,ease=easeInOut){this.cameraTarget=to;this.cameraJob={from:this.cameraDepth,to,start:performance.now(),duration:this.reduced?1:duration,ease};}
@@ -25,11 +25,13 @@ export class Scene {
     if(!this.ctx)return;const c=this.ctx,w=this.w,h=this.h,t=this.time,l=this.layout(),sea=l.height/2-this.cameraDepth*2,worldY=d=>l.height/2+(d-this.cameraDepth)*2,pal=this.theme.palette,paint=this.theme.paint,frame={w,h,t,l,sea,worldY};
     c.fillStyle=pal.ink;c.fillRect(0,0,w,h);
     paint.backdrop.call(this,frame);
-    const rulerX=w-l.rail-14;c.lineWidth=1.5;c.strokeStyle=pal.ruler+'8c';c.fillStyle=pal.ruler+'e6';c.font='13px VT323';c.textAlign='right';c.beginPath();c.moveTo(rulerX,Math.max(0,sea));c.lineTo(rulerX,l.height);c.stroke();
+    // Ruler and landmark text go on a full-resolution overlay so they stay sharp over the pixel-art scene.
+    const g=this.lctx||c;if(this.lctx){g.setTransform(this.dpr,0,0,this.dpr,0,0);g.clearRect(0,0,w,h);}
+    const rulerX=w-l.rail-14;g.lineWidth=1.5;g.strokeStyle=pal.ruler+'8c';g.fillStyle=pal.ruler+'e6';g.font='13px VT323';g.textAlign='right';g.beginPath();g.moveTo(rulerX,Math.max(0,sea));g.lineTo(rulerX,l.height);g.stroke();
     const minD=Math.max(0,Math.floor((this.cameraDepth-l.height/4)/10)*10),maxD=this.cameraDepth+l.height/4;
-    for(let d=minD;d<=maxD;d+=10){const yy=worldY(d);if(yy<0||yy>l.height)continue;const size=d%100===0?16:d%50===0?10:5;c.beginPath();c.moveTo(rulerX-size,yy);c.lineTo(rulerX,yy);c.stroke();if(d%100===0&&(!this.roundIndex||Math.abs(yy-worldY(this.target))>14))c.fillText(d===0?'0m':`-${d.toLocaleString()}m`,rulerX-size-5,yy+4);}
-    if(this.roundIndex){const yy=worldY(this.target);if(yy>0&&yy<l.height){c.fillStyle=pal.marker;c.beginPath();c.moveTo(rulerX+4,yy);c.lineTo(rulerX+12,yy-5);c.lineTo(rulerX+12,yy+5);c.fill();c.strokeStyle=pal.marker;c.beginPath();c.moveTo(rulerX-20,yy);c.lineTo(rulerX+4,yy);c.stroke();c.fillText('YOU',rulerX-24,yy+4);}}
-    c.font=`${l.mobile?13:17}px VT323`;c.fillStyle=pal.ruler+(this.phase==='plunge'?'d9':'1a');for(const[d,text,side]of this.theme.landmarks){const yy=worldY(d);if(yy<90||yy>l.height-100)continue;if(['intro','done'].includes(this.phase))continue;c.textAlign=side==='L'?'left':'right';c.fillText(side==='L'?`── ${text}`:`${text} ──`,side==='L'?l.left+l.width*.05:w-l.rail-96,yy);}
+    for(let d=minD;d<=maxD;d+=10){const yy=worldY(d);if(yy<0||yy>l.height)continue;const size=d%100===0?16:d%50===0?10:5;g.beginPath();g.moveTo(rulerX-size,yy);g.lineTo(rulerX,yy);g.stroke();if(d%100===0&&(!this.roundIndex||Math.abs(yy-worldY(this.target))>14))g.fillText(d===0?'0m':`-${d.toLocaleString()}m`,rulerX-size-5,yy+4);}
+    if(this.roundIndex){const yy=worldY(this.target);if(yy>0&&yy<l.height){g.fillStyle=pal.marker;g.beginPath();g.moveTo(rulerX+4,yy);g.lineTo(rulerX+12,yy-5);g.lineTo(rulerX+12,yy+5);g.fill();g.strokeStyle=pal.marker;g.beginPath();g.moveTo(rulerX-20,yy);g.lineTo(rulerX+4,yy);g.stroke();g.fillText('YOU',rulerX-24,yy+4);}}
+    g.font=`${l.mobile?13:17}px VT323`;g.fillStyle=pal.ruler+(this.phase==='plunge'?'d9':'1a');for(const[d,text,side]of this.theme.landmarks){const yy=worldY(d);if(yy<90||yy>l.height-100)continue;if(['intro','done'].includes(this.phase))continue;g.textAlign=side==='L'?'left':'right';g.fillText(side==='L'?`── ${text}`:`${text} ──`,side==='L'?l.left+l.width*.05:w-l.rail-96,yy);}
     c.textAlign='left';
     if(this.fx&&(this.phase==='plunge'||this.phase==='landed'&&this.fx.tier==='satoshi'))paint.effect.call(this,l);
     for(const p of this.particles){c.globalAlpha=p.life;paint.particle.call(this,p);}c.globalAlpha=1;

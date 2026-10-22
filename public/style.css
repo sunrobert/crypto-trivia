@@ -214,3 +214,4 @@ body[data-phase="done"] .mascot{z-index:15}
 .subline,.prompt-card h2,.landing p{text-wrap:balance}
 .mascot{transition:opacity .25s}@media(max-width:699px){body.results-scrolled[data-phase="done"] .mascot{opacity:0;pointer-events:none}}
 .answer-status{overflow-wrap:anywhere}
+#labels{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
