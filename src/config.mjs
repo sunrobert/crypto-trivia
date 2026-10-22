@@ -7,5 +7,5 @@ export const SITE = {
   title: 'Crypto Trivia — the daily rare-answer crypto game',
   rounds: 7, previewSeconds: 3, answerSeconds: 25, maxScore: 700, metresPerPoint: 10,
   theme: 'mine',
-  launchDate: '2026-12-01',
+  launchDate: '2026-10-21',
 };

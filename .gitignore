@@ -10,3 +10,4 @@ days/
 bank/
 *-bank/
 .wrangler/
+.gstack/
