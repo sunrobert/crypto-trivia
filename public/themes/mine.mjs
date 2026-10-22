@@ -58,10 +58,17 @@ function effect(l) {
   if (!landed) { const glow = c.createRadialGradient(x, y - 32, 6, x, y - 32, 80); glow.addColorStop(0, '#ffb34724'); glow.addColorStop(1, '#ffb34700'); c.fillStyle = glow; c.fillRect(x - 80, y - 112, 160, 160); }
   if (tier === 'holder' && this.sprites.copper?.complete) for (const [dx, dy] of [[-64, -26], [-88, 10], [64, -18], [88, 18], [-40, 34], [44, 38]]) { c.save(); c.translate(x + dx, y + dy + Math.sin(t * 4 + dx) * 5); c.drawImage(this.sprites.copper, -15, -15, 30, 30); c.restore(); }
   if (tier === 'satoshi') {
-    const vein = c.createRadialGradient(x, y, 10, x, y, 260); vein.addColorStop(0, '#ffd84a40'); vein.addColorStop(1, '#ffd84a00'); c.fillStyle = vein; c.fillRect(0, 0, this.w, this.h);
-    c.strokeStyle = '#ffd84a'; c.lineWidth = 2; for (let v = 0; v < 4; v++) { c.beginPath(); let xx = x, yy = y; c.moveTo(xx, yy); for (let j = 0; j < 7; j++) { xx += (v % 2 ? 1 : -1) * (18 + seed(v * 9 + j) * 16); yy += (v < 2 ? -1 : 1) * (8 + seed(v * 5 + j) * 10); c.lineTo(xx, yy); } c.globalAlpha = Math.max(0, .9 - scatter); c.stroke(); c.globalAlpha = 1; }
+    // Treasure-found sunburst: soft rotating rays and glow behind the text, sparkles, orbiting coins.
+    const fade = Math.max(0, 1 - scatter), R = Math.min(this.w, 520) * .55;
+    c.save(); c.translate(x, y); c.rotate(t * .15); c.globalAlpha = .55 * fade;
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; c.fillStyle = i % 2 ? '#ffd84a14' : '#ffd84a26'; c.beginPath(); c.moveTo(0, 0); c.arc(0, 0, R, a, a + Math.PI / 14); c.closePath(); c.fill(); }
+    c.restore();
+    const glow = c.createRadialGradient(x, y, 8, x, y, R * .7); glow.addColorStop(0, `rgba(255,216,74,${.35 * fade})`); glow.addColorStop(1, 'rgba(255,216,74,0)');
+    c.fillStyle = glow; c.fillRect(x - R, y - R, R * 2, R * 2);
+    for (let i = 0; i < 10; i++) { const a = i * 2.39 + t * .4, r = R * (.35 + seed(i + 40) * .5), sx = x + Math.cos(a) * r, sy = y + Math.sin(a) * r * .7, s = 2 + Math.round(2 * (.5 + .5 * Math.sin(t * 5 + i))); c.globalAlpha = fade * .9; c.fillStyle = '#fff6c8'; c.fillRect(sx - s, sy, s * 2 + 1, 1); c.fillRect(sx, sy - s, 1, s * 2 + 1); }
+    c.globalAlpha = 1;
     const coin = this.sprites.goldcoin;
-    if (coin?.complete) for (let i = 0; i < 14; i++) { const a = t * (i % 2 ? 1 : -1) + i * 2.4, r = (30 + seed(i) * 48) * (landed ? .62 : 1) * (1 + scatter * 7), size = 14 + seed(i + 3) * 12; c.save(); c.globalAlpha = Math.max(0, .95 - scatter * 1.15); c.drawImage(coin, x + Math.cos(a) * r * 1.12 - size / 2, y + Math.sin(a) * r * .62 - size / 2, size, size); c.restore(); }
+    if (coin?.complete) for (let i = 0; i < 12; i++) { const a = t * .9 * (i % 2 ? 1 : -1) + i * 2.4, r = (60 + seed(i) * 50) * (landed ? .8 : 1) * (1 + scatter * 6), size = 16 + seed(i + 3) * 10; c.save(); c.globalAlpha = Math.max(0, .95 - scatter * 1.15); c.drawImage(coin, Math.round(x + Math.cos(a) * r * 1.3 - size / 2), Math.round(y + Math.sin(a) * r * .55 - size / 2), size, size); c.restore(); }
   }
   rubble.call(this, x, y, landed);
 }
