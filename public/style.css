@@ -213,3 +213,4 @@ body[data-phase="done"] .mascot{z-index:15}
 .hero-word>.hero-line{display:inline-block;white-space:nowrap;animation:none}.hero-line>span{display:inline-block;animation:letter-float 3.2s ease-in-out infinite;animation-delay:calc(var(--letter)*.18s)}.low-power .hero-line>span{animation-play-state:paused}@media(max-width:699px){.hero-word{line-height:.95}.hero-word>.hero-line{display:block}}
 .subline,.prompt-card h2,.landing p{text-wrap:balance}
 .mascot{transition:opacity .25s}@media(max-width:699px){body.results-scrolled[data-phase="done"] .mascot{opacity:0;pointer-events:none}}
+.answer-status{overflow-wrap:anywhere}
