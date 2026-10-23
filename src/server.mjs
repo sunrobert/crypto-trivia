@@ -2,7 +2,8 @@ import { SITE } from './config.mjs';
 import { homePage, infoPage } from './html.mjs';
 import { puzzleFor as lookup } from './puzzles.mjs';
 import { runRetier } from './retier.mjs';
-import { TIER_SCORES, matchAnswer, etDate, resetAt, ROUND_MS, PREVIEW_MS } from '../public/rules.mjs';
+import { TIER_SCORES, matchAnswer, etDate, resetAt, ROUND_MS, PREVIEW_MS, parseShareCode, bandFor } from '../public/rules.mjs';
+import { renderCard } from './card.mjs';
 import { THEMES } from '../public/themes/index.mjs';
 const theme = () => THEMES[SITE.theme] || THEMES.sea;
 
@@ -136,12 +137,37 @@ async function api(request, env, url) {
   return fail('Unknown endpoint.',404);
 }
 // Single entry point for Vercel and the local dev server. Static files are served before this runs.
+// Share links: /s/<code> is the game page with that result as its X/OG preview, /og/<code>.png is the card itself.
+// The code holds only the day and the 7 tiers (e.g. 1-hhhdxhs), so the image can be cached forever.
+const cards = new Map();
+function shareImage(request, env, url) {
+  const m = /^\/og\/([^/]+)\.png$/.exec(url.pathname), code = m && parseShareCode(m[1]);
+  if (!code) return fail('Not found.', 404);
+  const theme = THEMES[SITE.theme], host = new URL(env.SITE_URL).host, key = m[1] + host;
+  if (!cards.has(key)) { if (cards.size > 500) cards.clear(); cards.set(key, renderCard({ theme, siteName: SITE.name, code, host })); }
+  const png = cards.get(key);
+  return new Response(request.method === 'HEAD' ? null : png, { headers: { 'Content-Type': 'image/png', 'Content-Length': String(png.length), 'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, immutable' } });
+}
+function sharePage(request, env, url) {
+  const raw = url.pathname.slice(3), code = parseShareCode(raw);
+  if (!code) return new Response(null, { status: 302, headers: { Location: '/', 'Cache-Control': 'no-store' } });
+  const theme = THEMES[SITE.theme], band = theme.bands[bandFor(code.score).tier].name, depth = (code.score * 10).toLocaleString('en-US');
+  const share = {
+    code: raw,
+    title: `I dug ${depth}m on ${SITE.name} #${code.day}${code.practice ? ' (practice)' : ''} · ${code.score}/700 · ${band}`,
+    description: 'Daily crypto trivia where rare answers dig deeper. 7 prompts, 25 seconds each. Can you beat it?',
+    subline: `a friend dug ${depth}m (${code.score}/700) · can you dig deeper?`,
+  };
+  return new Response(request.method === 'HEAD' ? null : homePage(env, url.searchParams.get('theme'), share), { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'public, max-age=300, s-maxage=300' } });
+}
 export async function handle(request, env) {
   env = { ...env, SITE_URL: env.SITE_URL || new URL(request.url).origin };
     const url = new URL(request.url);
     try {
       if (url.pathname.startsWith('/api/')) return headers(await api(request,env,url));
       if (!['GET','HEAD'].includes(request.method)) return headers(fail('Method not allowed.',405));
+      if (url.pathname.startsWith('/og/')) return headers(shareImage(request, env, url));
+      if (url.pathname.startsWith('/s/')) return headers(sharePage(request, env, url));
       if (url.pathname === '/') return headers(new Response(request.method==='HEAD'?null:homePage(env,url.searchParams.get('theme')),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache'}}));
       if (['/privacy','/about'].includes(url.pathname)) return headers(new Response(request.method==='HEAD'?null:infoPage(url.pathname,env),{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'public, max-age=300'}}));
       if (url.pathname === '/robots.txt') return headers(new Response(`User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${(env.SITE_URL||SITE.origin)}/sitemap.xml\n`,{headers:{'Content-Type':'text/plain; charset=utf-8'}}));

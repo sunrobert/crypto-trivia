@@ -38,10 +38,16 @@ try{
   // Post on X opens the composer with the result text; the image button downloads a 1200x675 card.
   await context.route(/https:\/\/x\.com\//,r=>r.fulfill({status:200,contentType:'text/plain',body:'intercepted'}));
   const popupPromise=page.waitForEvent('popup');await page.locator('#share-x').click();const popup=await popupPromise;
-  const posted=new URL(popup.url());assert.equal(posted.origin+posted.pathname,'https://x.com/intent/post');assert.match(posted.searchParams.get('text'),/\/700 · [\d,]+m · /);await popup.close();
-  const dl=page.waitForEvent('download');await page.locator('#share-image').click();const file=await dl;assert.match(file.suggestedFilename(),/^proof-of-dig-\d+\.png$/);
+  const posted=new URL(popup.url());assert.equal(posted.origin+posted.pathname,'https://x.com/intent/post');const text=posted.searchParams.get('text');assert.match(text,/\/700 · [\d,]+m · /);
+  // The link is this run's share page, so X previews it with the result card.
+  const link=text.split('\n').at(-1);assert.match(link,/\/s\/\d+-[nmhdosx]{7}$/,link);await popup.close();
+  const cardReq=page.waitForRequest(r=>/\/og\/\d+-[nmhdosx]{7}\.png$/.test(r.url()));const dl=page.waitForEvent('download');await page.locator('#share-image').click();await cardReq;const file=await dl;assert.match(file.suggestedFilename(),/^proof-of-dig-\d+\.png$/);
   const png=await sharp(await file.path()).metadata();assert.equal(png.width,1200);assert.equal(png.height,675);
   const stats=await sharp(await file.path()).stats();assert.ok(stats.channels[0].stdev>20,'card is not blank');await sharp(await file.path()).toFile(output+'/share-card.png');
+  { const sp=await context.newPage();sp.on('pageerror',e=>errors.push(e.message));await sp.goto(new URL(new URL(link).pathname,base).href);await sp.waitForFunction(()=>window.render_game_to_text);
+    assert.match(await sp.locator('.subline').textContent(),/a friend dug [\d,]+m/);assert.match(await sp.locator('meta[name="twitter:image"]').getAttribute('content'),/\/og\/\d+-[nmhdosx]{7}\.png$/);
+    await sp.waitForTimeout(1200);if(JSON.parse(await sp.evaluate(()=>window.render_game_to_text())).phase==='done')assert.equal(await sp.locator('#hero').evaluate(e=>getComputedStyle(e).opacity),'0','title hidden behind results');
+    await sp.screenshot({path:output+'/share-landing.png'});await sp.close(); }
   await page.reload();await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='done');assert.equal(JSON.parse(await page.evaluate(()=>window.render_game_to_text())).score,state.score);report.push({desktop:'pass',game:state});
   const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1,colorScheme:'light'});const mp=await mobile.newPage();mp.on('pageerror',e=>errors.push(e.message));
   await mp.goto(base+'/?test=1');await mp.waitForFunction(()=>window.render_game_to_text);await mp.evaluate(()=>document.fonts.ready);await mp.waitForFunction(()=>/#\d/.test(document.getElementById('day-number').textContent));await mp.screenshot({path:output+'/mobile-home.png'});

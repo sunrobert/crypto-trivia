@@ -29,13 +29,13 @@ test('scores are theme-independent', () => {
 
 test('share text: title, score with depth and tier, emoji row, link', () => {
   const results = Array.from({ length: 7 }, (_, round) => ({ round, tier: 'satoshi', score: 100 }));
-  const lines = shareText(3, results, THEMES.sea, { name: 'X', origin: 'https://x.test' }).split('\n');
+  const lines = shareText(3, results, THEMES.sea, { name: 'X', link: 'https://x.test' }).split('\n');
   assert.equal(lines[0], 'X #3 ' + THEMES.sea.copy.shareIcon);
   assert.equal(lines[1], `700/700 · 7,000m · ${THEMES.sea.bands.satoshi.name}`);
   assert.equal(lines[2], THEMES.sea.tiers.satoshi.emoji.repeat(7));
   assert.equal(lines[3], 'https://x.test');
   const mixed = [{ tier: 'degen', score: 60 }, { tier: null, score: 0 }, { tier: 'normie', score: 10 }];
-  const m = shareText(9, mixed, THEMES.mine, { name: 'Proof of Dig', origin: 'o' }).split('\n');
+  const m = shareText(9, mixed, THEMES.mine, { name: 'Proof of Dig', link: 'o' }).split('\n');
   assert.equal(m[1], `70/700 · 700m · ${THEMES.mine.bands.normie.name}`);
   assert.equal(m[2], THEMES.mine.tiers.degen.emoji + '⬛' + THEMES.mine.tiers.normie.emoji);
 });

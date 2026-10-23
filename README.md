@@ -45,7 +45,7 @@ A perfect day is **700 points** (7,000 m deep). Tiers aren't fixed forever: ever
 ## What's inside
 
 - **630 hand-written prompts** (90 days) with **30,000+ accepted answers**, from history and DeFi to memecoins, rugs and CT lore
-- **Built for posting on X:** one tap opens a ready-to-post result (score, depth, tier, emoji row and link), plus a 1200×675 image of your dig to attach
+- **Built for posting on X:** one tap opens a ready-to-post result (score, depth, tier and emoji row). Its link unfurls into a pixel-art card of your dig right in the post, and friends who tap it land on a "can you dig deeper?" challenge
 - **Logbook and streaks** saved in your browser (no account, no wallet, no sign-up)
 - **Practice mode** once you've finished the daily
 - **Pixel-art mine shaft** with crypto history carved into the walls on the way down (genesis block, the pizza, Mt. Gox, FTX…)
@@ -76,6 +76,7 @@ Tests: `npm test`. Browser walkthroughs: `node scripts/browser-audit.mjs <url>` 
 - **Plain JavaScript** front end (canvas pixel art, Web Audio sound) with a small Node handler, running as one Vercel function on a Turso (SQLite) database.
 - **Daily puzzles** come from a private bank, so nobody can read tomorrow's answers on GitHub. Each date's puzzle is frozen the first time it's served.
 - **Nightly re-ranking** (`/api/cron/retier`) uses real player answers to move tiers. After day 90 the bank reruns from day 1 with the updated tiers.
+- **Share cards.** A share link like `/s/1-hhhdxhs` holds only the day and your 7 tiers. `/og/<code>.png` draws the 1200×675 card on the server in plain JavaScript (no canvas or font files), so it's cached forever.
 - **Themes are swappable.** The art, copy and sounds live in `public/themes/` (`mine` by default, `sea` as an alternative).
 </details>
 

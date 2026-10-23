@@ -2,8 +2,10 @@
 export const mix=(a,b,t)=>a.map((v,i)=>Math.round(v+(b[i]-v)*t));
 export const rgb=c=>'#'+c.map(v=>Math.max(0,Math.min(255,v)).toString(16).padStart(2,'0')).join('');
 export const hash=(x,y)=>{const n=Math.sin(x*31.7+y*83.9)*48731.5;return n-Math.floor(n)};
+// The most recently created sprite, so callers can read its pixel grid (used by server-drawn share cards).
+export let lastPixels=null;
 export class Pixels{
- constructor(){this.p=Array.from({length:64},()=>Array(64).fill(null))}
+ constructor(){this.p=Array.from({length:64},()=>Array(64).fill(null));lastPixels=this}
  put(x,y,c){x=Math.round(x);y=Math.round(y);if(x>=0&&x<64&&y>=0&&y<64)this.p[y][x]=c}
  rect(x,y,w,h,c){for(let j=y;j<y+h;j++)for(let i=x;i<x+w;i++)this.put(i,j,c)}
  poly(points,c){for(let y=0;y<64;y++)for(let x=0;x<64;x++){let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const[a,b]=points[i],[d,e]=points[j];if((b>y)!==(e>y)&&x<(d-a)*(y-b)/(e-b)+a)inside=!inside}if(inside)this.put(x,y,typeof c==='function'?c(x,y):c)}}

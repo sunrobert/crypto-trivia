@@ -49,7 +49,17 @@ export function shareText(day, results, theme, site) {
   const score = results.reduce((s, r) => s + r.score, 0);
   const depth = (score * 10).toLocaleString('en-US');
   const band = theme.bands[bandFor(score).tier].name;
-  return `${site.name} #${day} ${theme.copy.shareIcon}\n${score}/700 · ${depth}m · ${band}\n${results.map(r => theme.tiers[r.tier]?.emoji || '⬛').join('')}\n${site.origin}`;
+  return `${site.name} #${day} ${theme.copy.shareIcon}\n${score}/700 · ${depth}m · ${band}\n${results.map(r => theme.tiers[r.tier]?.emoji || '⬛').join('')}\n${site.link}`;
+}
+// Compact, URL-safe summary of a finished game, e.g. "1-hhhdxhs" (day 1, seven tiers, x = miss, trailing p = practice).
+const CODE = { normie: 'n', midcurve: 'm', holder: 'h', degen: 'd', og: 'o', satoshi: 's' };
+const UNCODE = Object.fromEntries(Object.entries(CODE).map(([k, v]) => [v, k]));
+export const shareCode = (day, results, practice) => `${day}-${results.map(r => CODE[r.tier] || 'x').join('')}${practice ? 'p' : ''}`;
+export function parseShareCode(code) {
+  const m = /^([1-9]\d{0,3})-([nmhdosx]{7})(p?)$/.exec(String(code));
+  if (!m) return null;
+  const tiers = [...m[2]].map(c => UNCODE[c] || null);
+  return { day: Number(m[1]), tiers, practice: m[3] === 'p', score: tiers.reduce((s, t) => s + (t ? TIER_SCORES[t] : 0), 0) };
 }
 // Opens X's composer with the result prefilled; the link in the text brings the preview card.
 export const xShareUrl = text => 'https://x.com/intent/post?text=' + encodeURIComponent(text);
