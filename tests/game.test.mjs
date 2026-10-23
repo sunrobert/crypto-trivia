@@ -172,3 +172,12 @@ test('rejected guesses are logged',async()=>{
   assert.equal(rows.length,1);assert.equal(rows[0].date,etDate());assert.equal(rows[0].prompt_id,SAMPLE.prompts[0].id);assert.equal(rows[0].raw,'zzzzzzzzzz');
   s.env.DB.close();
 });
+test('server rejects a real name from another prompt instead of correcting it to a gem', async () => {
+  const s = await service(); const today = etDate(); s.env.LAUNCH_DATE = today;
+  const d = makeDay(1, 'ty'); d.prompts[0].answers[0].answer = 'PoloniDEX'; d.prompts[1].answers[1].answer = 'Poloniex';
+  await seedBank(s.env.DB, [d], { launchDate: today });
+  const { body: g } = await s.call('/api/start', {});
+  const r = await s.call('/api/answer', { runId: g.runId, round: 0, answer: 'Poloniex' });
+  assert.equal(r.body.rejected, true, JSON.stringify(r.body));
+  s.env.DB.close();
+});

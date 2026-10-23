@@ -103,3 +103,20 @@ test('validateBank and the CLI reject gaps and repeated prompt text', () => {
   writeFileSync(path.join(ok, '0001.json'), JSON.stringify(makeDay(1, 'e')));
   assert.equal(spawnSync('node', ['scripts/validate-bank.mjs', ok]).status, 0);
 });
+
+test('a real name from elsewhere in the bank is never "corrected" into a different answer', () => {
+  const answers = [{ answer: 'PoloniDEX', tier: 'satoshi' }, { answer: 'SunSwap', tier: 'normie' }];
+  assert.equal(matchAnswer('Poloniex', answers).answer, 'PoloniDEX'); // plain typo logic would correct it
+  assert.equal(matchAnswer('Poloniex', answers, new Set(['poloniex'])), null); // but Poloniex is a real thing
+  assert.equal(matchAnswer('Polonidx', answers, new Set(['poloniex'])).answer, 'PoloniDEX'); // genuine typos still correct
+  assert.equal(matchAnswer('SunSwap', answers, new Set(['sunswap'])).answer, 'SunSwap'); // exact hits unaffected
+});
+
+test('seedBank stores every known answer name so the server can tell typos from real names', async () => {
+  const db = createDb({ url: ':memory:' }); await migrate(db);
+  const day = makeDay(1, 'kn'); day.prompts[0].answers[1].aliases = ['Other Name'];
+  await seedBank(db, [day], { launchDate: '2026-12-01' });
+  const known = new Set(JSON.parse((await db.prepare("SELECT value FROM meta WHERE key='known_names'").first()).value));
+  assert.ok(known.has('kn1p0gem') && known.has('othername') && known.has('kn1p6x6'));
+  db.close();
+});

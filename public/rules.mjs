@@ -33,13 +33,16 @@ export function distance(a, b, limit = Infinity) {
   }
   return row[b.length];
 }
-export function matchAnswer(input, answers) {
+// `known` (optional): normalized names of every answer in the bank. A typed name that is itself
+// a real answer somewhere is never fuzzy-"corrected" into a different answer here.
+export function matchAnswer(input, answers, known) {
   const key = normalize(input);
   if (!key || key.length > 256) return null;
   const entries = answers.flatMap(a => [a.answer, ...(a.aliases || [])].map(word => ({ a, key: normalize(word) })));
   // An exact hit on the answer or any alias (tickers like "$DOGE") is accepted without a confirmation step.
   const exact = entries.find(e => e.key === key);
   if (exact) return { ...exact.a, correction: false };
+  if (known?.has(key)) return null;
   const allowance = key.length < 4 ? 0 : key.length < 8 ? 1 : 2;
   const candidates = entries.map(e => ({ ...e, d: distance(key, e.key, allowance) })).filter(e => e.d <= allowance).sort((a, b) => a.d - b.d);
   if (candidates.length && (!candidates[1] || candidates[0].d < candidates[1].d || candidates[0].a.answer === candidates[1].a.answer)) return { ...candidates[0].a, correction: true };

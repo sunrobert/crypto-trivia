@@ -17,6 +17,11 @@ function headers(response, additional = {}) {
 }
 const puzzleFor = (env, date) => lookup(env.DB, date, env.LAUNCH_DATE || SITE.launchDate);
 const secure = (request, url) => url.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https';
+const knownCache = new WeakMap();
+const knownNames = async db => {
+  if (!knownCache.has(db)) { const row = await db.prepare("SELECT value FROM meta WHERE key='known_names'").first(); knownCache.set(db, new Set(row ? JSON.parse(row.value) : [])); }
+  return knownCache.get(db);
+};
 const dailyDone = async (env, player, date) => !!(await env.DB.prepare("SELECT 1 AS ok FROM runs WHERE player=? AND date=? AND mode='daily' AND completed=1").bind(player || '', date).first());
 function promptDTO(puzzle) {
   return { date: puzzle.date, dayNumber: puzzle.dayNumber, sample: !!puzzle.sample, source: puzzle.source, resetsAt: resetAt(puzzle.date), prompts: puzzle.prompts.map(({ id, text }) => ({ id, text })) };
@@ -109,7 +114,7 @@ async function api(request, env, url) {
     // A small network grace period applies only to the client's timed submission.
     // A late manual request cannot revive an expired answer window.
     const timely = !late || (data.timeout === true && Date.now() <= run.round_start + ROUND_MS + 1500);
-    const match = raw && timely ? matchAnswer(raw,prompt.answers) : null;
+    const match = raw && timely ? matchAnswer(raw,prompt.answers,await knownNames(env.DB)) : null;
     if (!match && raw && !late && !data.timeout) {
       await env.DB.prepare('INSERT INTO rejections(date,prompt_id,raw,created_at) VALUES(?,?,?,?)').bind(run.date, prompt.id, raw, Date.now()).run();
       return json({ rejected: true, message: theme().copy.reject.replace('{answer}', raw) });

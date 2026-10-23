@@ -1,5 +1,6 @@
 // Puzzle bank format, validation and seeding. The bank itself lives in a private repo.
 import { TIER_KEYS, normalize } from '../public/rules.mjs';
+import { SAMPLE } from './sample-bank.mjs';
 
 export const CATEGORIES = ['history', 'chains', 'defi', 'memecoins', 'collapses', 'people', 'ct-lore', 'nfts', 'exchanges', 'tech', 'satoshi', 'culture'];
 
@@ -60,5 +61,11 @@ export async function seedBank(db, days, { launchDate }) {
     await db.prepare('INSERT INTO bank(day,content) VALUES(?,?) ON CONFLICT(day) DO UPDATE SET content=excluded.content, updated_at=CURRENT_TIMESTAMP').bind(d.day, JSON.stringify(content)).run();
   }
   await db.prepare("INSERT INTO meta(key,value) VALUES('launch_date',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(launchDate).run();
+  // Every answer and alias across the whole bank (plus the sample), for the server's typo guard.
+  const known = new Set(SAMPLE.prompts.flatMap(p => p.answers.flatMap(a => [a.answer, ...(a.aliases || [])])).map(normalize));
+  for (const { content } of (await db.prepare('SELECT content FROM bank').all()).results)
+    for (const p of JSON.parse(content).prompts) for (const a of p.answers) for (const w of [a.answer, ...(a.aliases || [])]) known.add(normalize(w));
+  known.delete('');
+  await db.prepare("INSERT INTO meta(key,value) VALUES('known_names',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify([...known])).run();
   return { written: days.length };
 }
