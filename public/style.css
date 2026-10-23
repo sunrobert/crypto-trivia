@@ -216,3 +216,8 @@ body[data-phase="done"] .mascot{z-index:15}
 .answer-status{overflow-wrap:anywhere}
 #labels{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 @media(max-width:699px){.hero{left:52px;right:52px}}
+.result-band{margin:2px 0 14px;font-size:19px;letter-spacing:.06em;color:var(--tier)}
+.share-bar{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin:0 0 22px}
+.share-bar button{padding:12px 10px;font-size:18px;letter-spacing:.06em;min-height:46px}
+.share-x{background:#000;color:#fff;border:1px solid #ffffff55;cursor:pointer}
+.share-x:hover,.share-x:focus-visible{background:#111;border-color:#fff}

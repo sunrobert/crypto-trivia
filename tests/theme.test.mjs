@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { THEMES } from '../public/themes/index.mjs';
-import { TIER_KEYS, TIER_SCORES, BANDS, shareText } from '../public/rules.mjs';
+import { TIER_KEYS, TIER_SCORES, BANDS, shareText, xShareUrl } from '../public/rules.mjs';
 import { SOUND_CUES, cuesFor } from '../public/sound.mjs';
 
 const keys = o => Object.keys(o).sort();
@@ -27,15 +27,24 @@ test('scores are theme-independent', () => {
   assert.equal(7 * TIER_SCORES.satoshi, 700);
 });
 
-test('share text uses theme emoji and origin', () => {
+test('share text: title, score with depth and tier, emoji row, link', () => {
   const results = Array.from({ length: 7 }, (_, round) => ({ round, tier: 'satoshi', score: 100 }));
-  const text = shareText(3, results, THEMES.sea, { name: 'X', origin: 'https://x.test' });
-  assert.ok(text.startsWith('X #3 '));
-  assert.ok(text.endsWith('\nhttps://x.test'));
-  assert.ok(text.includes('700/700 · 7000m'));
-  assert.ok(text.includes('\n' + THEMES.sea.tiers.satoshi.emoji.repeat(7) + '\n'));
-  const miss = shareText(1, [{ round: 0, tier: null, score: 0 }], THEMES.sea, { name: 'X', origin: 'o' });
-  assert.ok(miss.includes('\n⬛\n'));
+  const lines = shareText(3, results, THEMES.sea, { name: 'X', origin: 'https://x.test' }).split('\n');
+  assert.equal(lines[0], 'X #3 ' + THEMES.sea.copy.shareIcon);
+  assert.equal(lines[1], `700/700 · 7,000m · ${THEMES.sea.bands.satoshi.name}`);
+  assert.equal(lines[2], THEMES.sea.tiers.satoshi.emoji.repeat(7));
+  assert.equal(lines[3], 'https://x.test');
+  const mixed = [{ tier: 'degen', score: 60 }, { tier: null, score: 0 }, { tier: 'normie', score: 10 }];
+  const m = shareText(9, mixed, THEMES.mine, { name: 'Proof of Dig', origin: 'o' }).split('\n');
+  assert.equal(m[1], `70/700 · 700m · ${THEMES.mine.bands.normie.name}`);
+  assert.equal(m[2], THEMES.mine.tiers.degen.emoji + '⬛' + THEMES.mine.tiers.normie.emoji);
+});
+
+test('X share link opens the composer with the text prefilled', () => {
+  const text = 'Proof of Dig #1 ⛏️\n485/700 · 4,850m · Degen\nhttps://proof-of-dig.vercel.app';
+  const url = new URL(xShareUrl(text));
+  assert.equal(url.origin + url.pathname, 'https://x.com/intent/post');
+  assert.equal(url.searchParams.get('text'), text);
 });
 
 test('sound cues merge theme overrides', () => {

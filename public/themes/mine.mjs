@@ -153,7 +153,7 @@ export default {
     ],
     scene: ['goldcoin', 'pyrite', 'copper'],
   },
-  palette: { ink: '#0b0910', ruler: '#b8a99a', marker: '#ff8a3d', gold: '#ffd84a', burst: '#ffb347' },
+  palette: { ink: '#0b0910', ruler: '#b8a99a', marker: '#ff8a3d', gold: '#ffd84a', burst: '#ffb347', cardSky: ['#1e1538', '#5b2a5e', '#f08a4b'], cardHills: '#2a1830', cardGround: ['#3a2618', '#1a1218', '#0b0910'], cardGrass: '#3f7a3a' },
   landmarks: [[60, 'topsoil · normies dig here', 'L'], [200, 'Jan 3, 2009 · the genesis block', 'R'], [332, '10,000 BTC for two pizzas (2010)', 'R'], [385, 'Mt. Gox collapses (2014)', 'L'], [535, 'Ethereum mainnet launches (2015)', 'R'], [660, 'The DAO hack (2016)', 'L'], [800, 'ICO mania (2017)', 'R'], [1040, 'CRYPTO WINTER', 'L'], [1240, 'DeFi summer (2020)', 'R'], [1550, 'NFT mania (2021)', 'L'], [1850, 'Terra/LUNA collapses (May 2022)', 'R'], [2150, 'the Merge: Ethereum goes proof-of-stake (2022)', 'L'], [2500, 'FTX collapses (Nov 2022)', 'R'], [3000, 'THE DEGEN ZONE', 'L'], [3800, 'spot bitcoin ETFs approved (Jan 2024)', 'R'], [4400, 'a halving every 210,000 blocks', 'L'], [4900, 'lost keys rest down here', 'R'], [5500, 'Satoshi’s coins: still unmoved', 'L'], [6000, 'THE OG ZONE', 'R'], [6500, '21 million. no more.', 'L'], [7000, 'bedrock — a perfect dig ends here', 'R']],
   // The miner stands on the surface beside the headframe, clear of the intro buttons.
   layout: { intro: (l, w, sea) => ({ x: w * .25 + Math.max(58, w * .07), y: sea - 30 }) },

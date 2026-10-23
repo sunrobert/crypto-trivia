@@ -47,5 +47,9 @@ export function matchAnswer(input, answers) {
 }
 export function shareText(day, results, theme, site) {
   const score = results.reduce((s, r) => s + r.score, 0);
-  return `${site.name} #${day} ${theme.copy.shareIcon}\n${score}/700 · ${score * 10}m\n${results.map(r => theme.tiers[r.tier]?.emoji || '⬛').join('')}\n${site.origin}`;
+  const depth = (score * 10).toLocaleString('en-US');
+  const band = theme.bands[bandFor(score).tier].name;
+  return `${site.name} #${day} ${theme.copy.shareIcon}\n${score}/700 · ${depth}m · ${band}\n${results.map(r => theme.tiers[r.tier]?.emoji || '⬛').join('')}\n${site.origin}`;
 }
+// Opens X's composer with the result prefilled; the link in the text brings the preview card.
+export const xShareUrl = text => 'https://x.com/intent/post?text=' + encodeURIComponent(text);

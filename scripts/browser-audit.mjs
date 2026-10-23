@@ -1,6 +1,7 @@
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
+import sharp from 'sharp';
 
 const base=process.argv[2]||'http://localhost:3051';
 const output=process.argv[3]||'output/playwright/audit';
@@ -34,6 +35,13 @@ try{
   const state=await page.evaluate(()=>JSON.parse(window.render_game_to_text()));assert.equal(state.results.length,7);assert.ok(state.score>=300);assert.equal(state.results[6].score,local?0:100);assert.equal(state.sound.state,'running');
   await page.screenshot({path:output+'/desktop-results.png'});await page.locator('[data-review="3"]').click();assert.ok(await page.locator('.review-expanded').nth(3).isVisible());
   await page.locator('#copy-result').click();assert.ok((await page.evaluate(()=>navigator.clipboard.readText())).includes(' #'));
+  // Post on X opens the composer with the result text; the image button downloads a 1200x675 card.
+  await context.route(/https:\/\/x\.com\//,r=>r.fulfill({status:200,contentType:'text/plain',body:'intercepted'}));
+  const popupPromise=page.waitForEvent('popup');await page.locator('#share-x').click();const popup=await popupPromise;
+  const posted=new URL(popup.url());assert.equal(posted.origin+posted.pathname,'https://x.com/intent/post');assert.match(posted.searchParams.get('text'),/\/700 · [\d,]+m · /);await popup.close();
+  const dl=page.waitForEvent('download');await page.locator('#share-image').click();const file=await dl;assert.match(file.suggestedFilename(),/^proof-of-dig-\d+\.png$/);
+  const png=await sharp(await file.path()).metadata();assert.equal(png.width,1200);assert.equal(png.height,675);
+  const stats=await sharp(await file.path()).stats();assert.ok(stats.channels[0].stdev>20,'card is not blank');await sharp(await file.path()).toFile(output+'/share-card.png');
   await page.reload();await page.waitForFunction(()=>JSON.parse(window.render_game_to_text()).phase==='done');assert.equal(JSON.parse(await page.evaluate(()=>window.render_game_to_text())).score,state.score);report.push({desktop:'pass',game:state});
   const mobile=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:1,colorScheme:'light'});const mp=await mobile.newPage();mp.on('pageerror',e=>errors.push(e.message));
   await mp.goto(base+'/?test=1');await mp.waitForFunction(()=>window.render_game_to_text);await mp.evaluate(()=>document.fonts.ready);await mp.waitForFunction(()=>/#\d/.test(document.getElementById('day-number').textContent));await mp.screenshot({path:output+'/mobile-home.png'});
