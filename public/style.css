@@ -221,3 +221,4 @@ body[data-phase="done"] .mascot{z-index:15}
 .share-bar button{padding:12px 10px;font-size:18px;letter-spacing:.06em;min-height:46px}
 .share-x{background:#000;color:#fff;border:1px solid #ffffff55;cursor:pointer}
 .share-x:hover,.share-x:focus-visible{background:#111;border-color:#fff}
+@media(max-width:699px){.result-row{padding-right:50px;gap:6px}.result-row img,.result-row .miss-icon{width:min(34px,calc((100vw - 110px) / 7));height:auto;aspect-ratio:1}}
