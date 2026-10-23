@@ -51,7 +51,7 @@ function showLanding(result,oldScore=currentScore-result.score){
   setPhase('landed');const tier=TIERS[result.tier];document.body.dataset.tier=result.tier||'miss';document.documentElement.style.setProperty('--tier',tier?.color||'#7d93b8');
   const icon=$('land-icon');icon.hidden=!tier;icon.src='/assets/'+(iconFor(result.tier)||iconFor('normie'))+'.svg';icon.style.visibility=result.tier==='satoshi'?'hidden':'visible';
   $('land-tier').textContent=tier?.name.toUpperCase()||'NOTHING LANDED';$('land-answer').textContent=result.answer?`“${result.answer}”`:'—';$('land-points').innerHTML=`<b>+${result.score} PTS</b>${result.score?' · '+copy.sinkVerb+' '+(result.score*10).toLocaleString('en-US')+'m':''}`;
-  $('land-quip').textContent=result.quip||tier?.blurb||(result.rawAnswer?copy.missQuip:'the clock beat you to it.');$('next-btn').textContent=game.completed?copy.finishButton:copy.nextButton;
+  $('land-quip').textContent=result.quip||tier?.blurb||(result.rawAnswer?copy.missQuip:'the clock beat you to it.');$('next-btn').textContent=game.completed?copy.finishButton:copy.nextButton;if(matchMedia('(pointer:fine)').matches)setTimeout(()=>{if(phase==='landed')$('next-btn').focus({preventScroll:true})},testMode?0:400);
   if(tier)sound.event(result.tier);scene.target=currentScore*10;scene.roundIndex=game.round;
   if(!scene.fx)scene.fx={tier:result.tier,progress:1};
   scene.moveCamera(currentScore*10+30,testMode?1:500);
