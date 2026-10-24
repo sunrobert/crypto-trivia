@@ -12,7 +12,7 @@ const url = process.env.TURSO_DATABASE_URL || 'file:.data/local.db';
 if (url === 'file:.data/local.db') await mkdir('.data', { recursive: true });
 const DB = createDb({ url, authToken: process.env.TURSO_AUTH_TOKEN });
 await migrate(DB);
-const env = { DB, SITE_URL: `http://localhost:${port}`, LOCAL_DEVELOPMENT: 'true', LAUNCH_DATE: process.env.LAUNCH_DATE || '', CRON_SECRET: process.env.CRON_SECRET || '' };
+const env = { DB, SITE_URL: `http://localhost:${port}`, LOCAL_DEVELOPMENT: 'true', LAUNCH_DATE: process.env.LAUNCH_DATE || '', CRON_SECRET: process.env.CRON_SECRET || '', TIP_EVM: process.env.TIP_EVM || '', TIP_SOL: process.env.TIP_SOL || '' };
 const types = { '.mjs': 'text/javascript', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8', '.json': 'application/json' };
 
 async function staticFile(pathname) {

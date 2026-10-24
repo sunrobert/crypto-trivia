@@ -222,3 +222,12 @@ body[data-phase="done"] .mascot{z-index:15}
 .share-x{background:#000;color:#fff;border:1px solid #ffffff55;cursor:pointer}
 .share-x:hover,.share-x:focus-visible{background:#111;border-color:#fff}
 @media(max-width:699px){.result-row{padding-right:50px;gap:6px}.result-row img,.result-row .miss-icon{width:min(34px,calc((100vw - 110px) / 7));height:auto;aspect-ratio:1}}
+
+.tip-btn{display:block;width:100%;margin:-10px 0 22px;padding:11px 10px;background:none;border:1px dashed color-mix(in srgb,var(--gold) 55%,transparent);color:var(--gold);font-size:17px;letter-spacing:.06em;cursor:pointer}
+.tip-btn:hover,.tip-btn:focus-visible{background:color-mix(in srgb,var(--gold) 9%,transparent);border-style:solid}
+.tip-list{list-style:none;padding:0;margin:18px 0}
+.tip-list li{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--k263c56)}
+.tip-chain{grid-column:1/-1;color:var(--muted);font-size:15px;letter-spacing:.08em}
+.tip-address{font-family:inherit;font-size:16px;word-break:break-all;color:var(--gold);user-select:all}
+.tip-copy{padding:8px 12px;font-size:16px;min-width:82px}
+.tip-note{font-size:14px}

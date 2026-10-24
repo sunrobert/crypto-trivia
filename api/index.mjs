@@ -10,6 +10,8 @@ const env = url && {
   SITE_URL: process.env.SITE_URL || '',
   LAUNCH_DATE: process.env.LAUNCH_DATE || '',
   CRON_SECRET: process.env.CRON_SECRET || '',
+  TIP_EVM: process.env.TIP_EVM || '',
+  TIP_SOL: process.env.TIP_SOL || '',
   LOCAL_DEVELOPMENT: 'false',
 };
 const run = request => env ? handle(request, env)
