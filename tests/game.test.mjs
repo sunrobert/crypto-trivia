@@ -63,7 +63,7 @@ test('openkrillion-only routes are gone',async()=>{
   const admin=await s.call('/api/admin/sync',{});assert.equal(admin.status,404);
   s.env.DB.close();
 });
-test('home page has no analytics, AI links, guide or krillion branding',()=>{
+test('home page has no ad trackers, AI links, guide or krillion branding',()=>{
   const html=homePage();
   assert.doesNotMatch(html,/plausible|gtag|clarity|chatgpt|perplexity|grok|id="guide"|lang=zh/i);
   assert.doesNotMatch(html,/krillion/i);
@@ -180,4 +180,11 @@ test('server rejects a real name from another prompt instead of correcting it to
   const r = await s.call('/api/answer', { runId: g.runId, round: 0, answer: 'Poloniex' });
   assert.equal(r.body.rejected, true, JSON.stringify(r.body));
   s.env.DB.close();
+});
+
+test('cookieless Vercel Web Analytics loads in production only',()=>{
+  assert.match(homePage({}),/\/_vercel\/insights\/script\.js/);
+  assert.match(infoPage('/about',{}),/\/_vercel\/insights\/script\.js/);
+  assert.doesNotMatch(homePage({LOCAL_DEVELOPMENT:'true'}),/_vercel\/insights/);
+  assert.match(infoPage('/privacy',{}),/Vercel Web Analytics, which sets no cookies/);
 });
